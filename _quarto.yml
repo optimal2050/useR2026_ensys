@@ -3,13 +3,14 @@ project:
   # the slides are a separate revealjs render; ship the built deck with the book:
   #   quarto render slides/intro.qmd   (1. build the deck)
   #   quarto render                    (2. build the book; copies the deck in)
-  resources:
-    - slides/intro.html
-    - slides/intro_files
+  # resources:
+  #   - slides/intro.html
+  #   - slides/intro_files
 
 book:
   title: "Energy System Modeling with R — useR! Training"
-  author: "Oleg Lugovoy, at al."
+  author: "Oleg Lugovoy, et al."
+  date: today
   chapters:
     - index.qmd
     - installation.qmd
