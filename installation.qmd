@@ -1,0 +1,418 @@
+---
+title: "Installing energyRt"
+# Optional backends — flip to `true` to include that section in the rendered
+# book. GLPK (the default training backend) is always shown.
+show-julia: false
+show-python: false
+show-gams: false
+# Belt-and-suspenders: never execute install/solver code while rendering.
+execute:
+  eval: false
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+#| include: false
+#| eval: false
+# Safety net: even if a chunk sets eval individually, nothing runs at render.
+knitr::opts_chunk$set(eval = FALSE)
+```
+
+energyRt formulates an optimization model once and hands it to one of several
+mathematical-programming **backends**. You only need *one* of them to get
+started; you can add more later and cross-check results between them.
+
+::: {.callout-important}
+Every command below is shown for you to copy into your **own R session**. This
+page renders without executing anything — no packages are installed while the
+book builds.
+:::
+
+## Prerequisites
+
+Install R (≥ 4.3) and, recommended,
+[RStudio](https://posit.co/download/rstudio-desktop/) as the IDE for the
+training.
+
+::: {.panel-tabset}
+### Windows
+Download and run the installer from
+[CRAN](https://cran.r-project.org/bin/windows/base/).
+
+### macOS
+Install the `.pkg` from [CRAN](https://cran.r-project.org/bin/macosx/), or with
+[Homebrew](https://brew.sh/):
+
+```bash
+brew install --cask r
+```
+
+### Ubuntu
+Install a current R from the CRAN apt repository (see the
+[CRAN Ubuntu](https://cran.r-project.org/bin/linux/ubuntu/) guide):
+
+```bash
+sudo apt update
+sudo apt install --no-install-recommends r-base
+```
+:::
+
+## Quick install (recommended)
+
+One line installs everything — `pak`, the system-library guidance, all
+dependencies, and energyRt itself. Paste this into R:
+
+```{r}
+source("https://raw.githubusercontent.com/optimal2050/energyRt/main/inst/install.R")
+install_energyRt()
+```
+
+On Linux it prints the exact `sudo` command for any missing system libraries (it
+never runs `sudo` itself) — run that, then re-run `install_energyRt()`.
+
+Once it finishes, verify your setup in a fresh session:
+
+```{r}
+library(energyRt)
+en_setup()
+```
+
+`en_setup()` reports your OS, the system libraries to install (Linux), and the
+full dependency status table.
+
+## Step-by-step install (if the quick install fails)
+
+Prefer to install by hand, or need to debug a failure? Install **pak** first —
+the installer used throughout this guide:
+
+```{r}
+install.packages("pak")
+```
+
+### System libraries (Linux)
+
+On Linux, energyRt's dependencies compile from source and need a few system
+libraries. `pak` lists exactly which ones — install the reported apt packages
+first so the R installs don't fail midway:
+
+```{r}
+pak::pkg_sysreqs("optimal2050/energyRt")   # lists the apt packages
+```
+
+```bash
+# typical set on Debian/Ubuntu:
+sudo apt install libcurl4-openssl-dev libssl-dev libxml2-dev
+```
+
+### R package dependencies
+
+Install energyRt's CRAN imports up front — one by one, so any failure is
+isolated and reported by name. Doing this first makes the energyRt install
+itself quick and reliable, and avoids the Linux error
+`dependencies '...' are not available for package 'energyRt'`.
+
+```{r}
+# energyRt's direct CRAN imports (base packages are omitted):
+deps <- c(
+  "generics", "data.table", "DBI", "RSQLite", "tibble", "tidyr", "dplyr",
+  "rlang", "stringr", "lubridate", "purrr", "arrow", "progressr", "tictoc",
+  "cli", "zoo", "registry", "options", "glue", "plyr",
+  # suggested -- plots and reports (optional but recommended):
+  "ggplot2", "patchwork", "knitr", "rmarkdown", "tinytex", "sf",
+  # optional -- the energy-rhapsody finale (plus MuseScore, see below):
+  "gm"
+)
+
+failed <- character(0)
+for (pkg in deps) {
+  ok <- tryCatch(
+    {
+      pak::pkg_install(pkg, ask = FALSE)
+      message("  [ok]   ", pkg)
+      TRUE
+    },
+    error = function(e) {
+      message("  [FAIL] ", pkg, ": ", conditionMessage(e))
+      FALSE
+    }
+  )
+  if (!ok) failed <- c(failed, pkg)
+}
+
+if (length(failed) == 0) {
+  message("All dependencies installed — you're ready to install energyRt.")
+} else {
+  message("Failed packages: ", paste(failed, collapse = ", "))
+  message("Install their system libraries (above), then re-run.")
+}
+```
+
+### Install energyRt
+
+With the dependencies in place, installing energyRt is a quick one-liner:
+
+```{r}
+pak::pkg_install("optimal2050/energyRt")
+
+# or, with remotes:
+# install.packages("remotes")
+# remotes::install_github("optimal2050/energyRt")
+```
+
+## Check what you already have
+
+```{r}
+library(energyRt)
+en_check_dependencies()   # solver backends: GLPK / Julia / Python / GAMS / GDX
+en_check_packages()       # R packages, training extras, LaTeX engine, MuseScore
+```
+
+`en_check_dependencies()` prints a status table — for each backend: installed?,
+version, path, and a hint for what to do next — and tells you whether at least
+one solver is ready. Each backend also has its own detector, e.g.
+`en_check_glpk()`, `en_check_julia()`, `en_check_python()`, `en_check_pyomo()`,
+`en_check_gams()`.
+
+`en_check_packages()` covers the rest of the course toolkit: energyRt's own R
+dependencies, the plotting/reporting extras (`ggplot2`, `patchwork`, `knitr`,
+`rmarkdown`, `tinytex`, `sf`, `gm`), and the external tools they need — a LaTeX
+engine for PDF reports and MuseScore for the `gm` music output. (`en_setup()`
+runs both checks for you.)
+
+## Choose a backend
+
+| Backend | Software to install | License | Notes |
+|---|---|---|---|
+| **GLPK** | `glpsol` executable | open-source | Easiest to install; slow on very large models. Used in this training. |
+| **Julia / JuMP** | Julia + `JuMP`, `HiGHS` | open-source | Fast (HiGHS barrier); recommended for large models. |
+| **Python / Pyomo** | Python + `pyomo` + a solver (CBC) | open-source | Convenient if you already use conda. |
+| **GAMS** | GAMS distribution | proprietary | Needs a license; also enables GDX I/O. |
+
+For the training we use **GLPK** — it is open-source and the quickest to set up.
+The other three backends are optional; each is covered below when enabled.
+
+## GLPK (recommended for the training)
+
+Install the `glpsol` executable.
+
+::: {.panel-tabset}
+### Windows
+**Nothing to install.** `glpsol.exe` already ships with
+[Rtools](https://cran.r-project.org/bin/windows/Rtools/) 4.5 — which you already
+have, since Rtools is required to build energyRt from source. It lives at
+`C:/rtools45/x86_64-w64-mingw32.static.posix/bin/glpsol.exe`.
+
+### macOS
+```bash
+brew install glpk
+```
+
+### Ubuntu
+```bash
+sudo apt install glpk-utils
+```
+:::
+
+Then confirm energyRt can find it. Set the path only if `glpsol` is not already
+detected — on macOS/Ubuntu the package managers put it on your `PATH`
+automatically:
+
+```{r}
+# Windows (Rtools 4.5): point at the bundled glpsol if not auto-detected.
+# On macOS/Ubuntu this is usually unnecessary.
+set_glpk_path("C:/rtools45/x86_64-w64-mingw32.static.posix/bin")
+en_check_glpk()
+```
+
+::: {.content-visible when-meta="show-julia"}
+## Julia / JuMP
+
+Install Julia via [juliaup](https://github.com/JuliaLang/juliaup).
+
+::: {.panel-tabset}
+### Windows
+```powershell
+winget install julia -s msstore
+```
+(or the official installer).
+
+### macOS
+```bash
+brew install juliaup
+# or: curl -fsSL https://install.julialang.org | sh
+```
+
+### Ubuntu
+```bash
+curl -fsSL https://install.julialang.org | sh
+```
+:::
+
+Then, from R (set the path only if Julia is not on your `PATH`):
+
+```{r}
+set_julia_path("~/.juliaup/bin/")
+en_install_julia_pkgs()   # JuMP, HiGHS, Cbc, Clp, ... into the Julia env
+en_check_julia()
+```
+
+::: {.callout-note collapse="true"}
+## Manual alternative (if `en_install_julia_pkgs()` fails)
+
+Install the same packages yourself from the Julia REPL (or `julia -e "..."`):
+
+```julia
+using Pkg
+Pkg.add(["JuMP", "HiGHS", "Cbc", "Clp", "RData", "RCall",
+         "CodecBzip2", "Gadfly", "DataFrames", "CSV", "SQLite", "Dates"])
+```
+:::
+:::
+
+::: {.content-visible when-meta="show-python"}
+## Python / Pyomo
+
+Install [Miniforge](https://github.com/conda-forge/miniforge) (recommended; it
+gives you `conda`).
+
+::: {.panel-tabset}
+### Windows
+Download and run the `Miniforge3` Windows installer. Avoid the Microsoft Store
+"App execution alias" python — `en_check_python()` flags it as non-functional.
+
+### macOS
+```bash
+brew install miniforge
+# or run the Miniforge3 installer for your chip (arm64 / x86_64)
+```
+
+### Ubuntu
+```bash
+curl -L -O https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh
+bash Miniforge3-Linux-x86_64.sh
+```
+:::
+
+Then, from R:
+
+```{r}
+set_python_path("~/.conda/envs/energyRt")     # the env created below
+en_install_python_deps()                       # conda env "energyRt": pyomo + cbc
+# en_install_python_deps(use_conda = FALSE)    # or pip into the configured python
+en_check_pyomo()
+```
+
+::: {.callout-note collapse="true"}
+## Manual alternative (if `en_install_python_deps()` fails)
+
+Create the environment and install the packages directly with conda (or mamba):
+
+```bash
+conda create -y -n energyRt python
+conda install -y -n energyRt -c conda-forge pyomo pandas pyarrow coincbc
+```
+
+Or with `pip` — note pip cannot supply the CBC solver binary, so install a
+Pyomo-compatible solver (e.g. CBC) separately:
+
+```bash
+python -m pip install --upgrade pyomo pandas pyarrow
+```
+:::
+:::
+
+::: {.content-visible when-meta="show-gams"}
+## GAMS
+
+Download and install GAMS from <https://www.gams.com/download/> (license
+required), then point energyRt at the GAMS system directory:
+
+::: {.panel-tabset}
+### Windows
+```{r}
+set_gams_path("C:/GAMS/<version>/")
+```
+
+### macOS
+```{r}
+set_gams_path("/Library/Frameworks/GAMS.framework/Versions/Current/Resources")
+```
+
+### Ubuntu
+```{r}
+set_gams_path("/opt/gams/gams<version>_linux_x64_64_sfx")
+```
+:::
+
+```{r}
+en_check_gams()
+```
+
+GDX input/output uses `gdxtools`, which `en_install_deps()` installs
+automatically when it detects GAMS.
+:::
+
+## Install the library layer
+
+Once your runtime(s) are present, install the packages each backend needs in
+one call:
+
+```{r}
+en_install_deps()   # detects runtimes, then installs the safe library layer
+```
+
+`en_install_deps()` runs a dependency check, installs only the library layer for
+the runtimes it finds (skipping — with a warning — any that are missing), and
+re-checks at the end.
+
+::: {.callout-note collapse="true"}
+## Manual alternative (if `en_install_deps()` fails)
+
+`en_install_deps()` bundles the R, Julia, and Python layers — run them by hand:
+
+**R layer** — the GAMS GDX bridge (not on CRAN) plus optional I/O helpers:
+
+```r
+pak::pkg_install("lolow/gdxtools")   # or remotes::install_github("lolow/gdxtools")
+install.packages(c("jsonlite", "readxl", "openxlsx"))
+```
+
+**Julia** and **Python** layers — use the manual blocks in the *Julia / JuMP*
+and *Python / Pyomo* sections above (enable them with the `show-julia` /
+`show-python` header params).
+:::
+
+## Verify end-to-end
+
+Re-check (everything you installed should now be green), choose a default
+solver, and solve a tiny model:
+
+```{r}
+en_check_dependencies(solver_pkgs = TRUE)
+set_default_solver(solver_options$glpk)   # or julia_highs_barrier, pyomo_cbc, ...
+
+# a minimal model solve confirms the full toolchain works
+# (see the modeling chapters for assembling a model)
+```
+
+If two or more backends are installed, solving the same scenario with each and
+comparing objectives is the strongest check that your setup is correct.
+
+## Optional: the energy-rhapsody finale 🎵
+
+The closing chapter (@sec-rhapsody) *sonifies* scenarios — it turns a day of
+dispatch into music. It needs two optional pieces; everything else in the
+workshop runs without them.
+
+```{r}
+# 1. the gm package (composes the score)
+install.packages("gm")
+
+# 2. MuseScore (renders score + audio) — download from https://musescore.org
+#    then, if gm cannot find it automatically, point gm at the executable:
+# options(gm.musescore_path = "C:/Program Files/MuseScore 4/bin/MuseScore4.exe")
+```
+
+Without MuseScore you can still *compose* (`energy_rhapsody(scen, play =
+FALSE)` returns the score object) — you just can't hear it.

@@ -1,0 +1,31 @@
+# Preface {.unnumbered}
+
+This training introduces energy system modeling in R with the
+[energyRt](https://github.com/optimal2050/energyRt) package — energy system
+modeling with a familiar R workflow: you describe the system as R objects,
+energyRt compiles and solves the optimization model on one of several
+mathematical-programming **backends** (GLPK, Julia/JuMP, Python/Pyomo, or
+GAMS), and results come back as tidy tables.
+
+The first chapter, [Installation](installation.qmd), walks through installing R,
+the energyRt package, and at least one solver backend so your machine is ready
+for the hands-on sessions.
+
+<!-- The rest of the tutorial is hands-on, in two parts. **Build UTOPIA** -->
+<!-- (@sec-first-model – @sec-utopia): solve a first tiny model end to end, then -->
+<!-- grow the classic UTOPIA electricity model brick by brick — commodities, supply -->
+<!-- and demand, technologies in depth (with levelized costs and reports), time -->
+<!-- slices, weather and storage — until it assembles into the exact model that -->
+<!-- ships with energyRt as the `utopia_modules` kit. **Use UTOPIA** -->
+<!-- (@sec-scenarios): run policy scenarios (CO~2~ cap, carbon tax, renewable -->
+<!-- share, nuclear moratorium) and compare them. Each chapter ends with exercises; -->
+<!-- worked solutions are folded underneath. -->
+
+<!-- The [intro slides](slides/intro.html) give the 10-minute framing (what an -->
+<!-- energy-system model is, and how the day is structured); the mechanics live here -->
+<!-- in the tutorial. -->
+
+::: {.callout-tip}
+The installation chapter shows every command but does **not** run any of them at
+render time — copy each command into your own R session to execute it.
+:::

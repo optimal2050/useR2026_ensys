@@ -1,0 +1,42 @@
+project:
+  type: book
+  # the slides are a separate revealjs render; ship the built deck with the book:
+  #   quarto render slides/intro.qmd   (1. build the deck)
+  #   quarto render                    (2. build the book; copies the deck in)
+  resources:
+    - slides/intro.html
+    - slides/intro_files
+
+book:
+  title: "Energy System Modeling with R — useR! Training"
+  author: "Oleg Lugovoy, at al."
+  chapters:
+    - index.qmd
+    - installation.qmd
+    # - part: "Build UTOPIA"
+      # chapters:
+        # - 01-first-model.qmd
+        # - 02-commodities-supply-demand.qmd
+        # - 03-technologies.qmd
+        # - 04-time-and-storage.qmd
+        # - 05-utopia.qmd
+    # - part: "Use UTOPIA"
+      # chapters:
+        # - 06-scenarios.qmd
+        # - 07-energy-rhapsody.qmd
+  navbar:
+    search: true
+    collapse: true
+    right:
+      - icon: github
+        href: https://github.com/optimal2050/energyRt
+        aria-label: energyRt on GitHub
+
+# Never execute installation/solver code while rendering the site.
+execute:
+  eval: false
+
+format:
+  html:
+    theme: cosmo
+    toc: true
