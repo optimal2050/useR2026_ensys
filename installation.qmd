@@ -64,7 +64,7 @@ One line installs everything — `pak`, the system-library guidance, all
 dependencies, and energyRt itself. Paste this into R:
 
 ```{r}
-source("https://raw.githubusercontent.com/optimal2050/energyRt/main/inst/install.R")
+source("https://raw.githubusercontent.com/optimal2050/energyRt/master/inst/install.R")
 install_energyRt()
 ```
 
