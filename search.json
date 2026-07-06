@@ -104,7 +104,7 @@
     "href": "installation.html#optional-the-energy-rhapsody-finale",
     "title": "1  Installing energyRt",
     "section": "1.9 Optional: the energy-rhapsody finale 🎵",
-    "text": "1.9 Optional: the energy-rhapsody finale 🎵\nThe closing chapter (?sec-rhapsody) sonifies scenarios — it turns a day of dispatch into music. It needs two optional pieces; everything else in the workshop runs without them.\n\n# 1. the gm package (composes the score)\ninstall.packages(\"gm\")\n\n# 2. MuseScore (renders score + audio) — download from https://musescore.org\n#    then, if gm cannot find it automatically, point gm at the executable:\n# options(gm.musescore_path = \"C:/Program Files/MuseScore 4/bin/MuseScore4.exe\")\n\nWithout MuseScore you can still compose (energy_rhapsody(scen, play = FALSE) returns the score object) — you just can’t hear it.",
+    "text": "1.9 Optional: the energy-rhapsody finale 🎵\nThe closing chapter (@sec-rhapsody) sonifies scenarios — it turns a day of dispatch into music. It needs two optional pieces; everything else in the workshop runs without them.\n\n# 1. the gm package (composes the score)\ninstall.packages(\"gm\")\n\n# 2. MuseScore (renders score + audio) — download from https://musescore.org\n#    then, if gm cannot find it automatically, point gm at the executable:\n# options(gm.musescore_path = \"C:/Program Files/MuseScore 4/bin/MuseScore4.exe\")\n\nWithout MuseScore you can still compose (energy_rhapsody(scen, play = FALSE) returns the score object) — you just can’t hear it.",
     "crumbs": [
       "<span class='chapter-number'>1</span>  <span class='chapter-title'>Installing energyRt</span>"
     ]
