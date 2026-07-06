@@ -1,0 +1,112 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Energy System Modeling with R — useR! Training",
+    "section": "",
+    "text": "Preface\nThis training introduces energy system modeling in R with the energyRt package — energy system modeling with a familiar R workflow: you describe the system as R objects, energyRt compiles and solves the optimization model on one of several mathematical-programming backends (GLPK, Julia/JuMP, Python/Pyomo, or GAMS), and results come back as tidy tables.\nThe first chapter, Installation, walks through installing R, the energyRt package, and at least one solver backend so your machine is ready for the hands-on sessions.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nTip\n\n\n\nThe installation chapter shows every command but does not run any of them at render time — copy each command into your own R session to execute it.",
+    "crumbs": [
+      "Preface"
+    ]
+  },
+  {
+    "objectID": "installation.html",
+    "href": "installation.html",
+    "title": "1  Installing energyRt",
+    "section": "",
+    "text": "1.1 Prerequisites\nenergyRt formulates an optimization model once and hands it to one of several mathematical-programming backends. You only need one of them to get started; you can add more later and cross-check results between them.\nInstall R (≥ 4.3) and, recommended, RStudio as the IDE for the training.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Installing energyRt</span>"
+    ]
+  },
+  {
+    "objectID": "installation.html#prerequisites",
+    "href": "installation.html#prerequisites",
+    "title": "1  Installing energyRt",
+    "section": "",
+    "text": "WindowsmacOSUbuntu\n\n\nDownload and run the installer from CRAN.\n\n\nInstall the .pkg from CRAN, or with Homebrew:\nbrew install --cask r\n\n\nInstall a current R from the CRAN apt repository (see the CRAN Ubuntu guide):\nsudo apt update\nsudo apt install --no-install-recommends r-base",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Installing energyRt</span>"
+    ]
+  },
+  {
+    "objectID": "installation.html#quick-install-recommended",
+    "href": "installation.html#quick-install-recommended",
+    "title": "1  Installing energyRt",
+    "section": "1.2 Quick install (recommended)",
+    "text": "1.2 Quick install (recommended)\nOne line installs everything — pak, the system-library guidance, all dependencies, and energyRt itself. Paste this into R:\n\nsource(\"https://raw.githubusercontent.com/optimal2050/energyRt/master/inst/install.R\")\ninstall_energyRt()\n\nOn Linux it prints the exact sudo command for any missing system libraries (it never runs sudo itself) — run that, then re-run install_energyRt().\nOnce it finishes, verify your setup in a fresh session:\n\nlibrary(energyRt)\nen_setup()\n\nen_setup() reports your OS, the system libraries to install (Linux), and the full dependency status table.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Installing energyRt</span>"
+    ]
+  },
+  {
+    "objectID": "installation.html#step-by-step-install-if-the-quick-install-fails",
+    "href": "installation.html#step-by-step-install-if-the-quick-install-fails",
+    "title": "1  Installing energyRt",
+    "section": "1.3 Step-by-step install (if the quick install fails)",
+    "text": "1.3 Step-by-step install (if the quick install fails)\nPrefer to install by hand, or need to debug a failure? Install pak first — the installer used throughout this guide:\n\ninstall.packages(\"pak\")\n\n\n1.3.1 System libraries (Linux)\nOn Linux, energyRt’s dependencies compile from source and need a few system libraries. pak lists exactly which ones — install the reported apt packages first so the R installs don’t fail midway:\n\npak::pkg_sysreqs(\"optimal2050/energyRt\")   # lists the apt packages\n\n# typical set on Debian/Ubuntu:\nsudo apt install libcurl4-openssl-dev libssl-dev libxml2-dev\n\n\n1.3.2 R package dependencies\nInstall energyRt’s CRAN imports up front — one by one, so any failure is isolated and reported by name. Doing this first makes the energyRt install itself quick and reliable, and avoids the Linux error dependencies '...' are not available for package 'energyRt'.\n\n# energyRt's direct CRAN imports (base packages are omitted):\ndeps &lt;- c(\n  \"generics\", \"data.table\", \"DBI\", \"RSQLite\", \"tibble\", \"tidyr\", \"dplyr\",\n  \"rlang\", \"stringr\", \"lubridate\", \"purrr\", \"arrow\", \"progressr\", \"tictoc\",\n  \"cli\", \"zoo\", \"registry\", \"options\", \"glue\", \"plyr\",\n  # suggested -- plots and reports (optional but recommended):\n  \"ggplot2\", \"patchwork\", \"knitr\", \"rmarkdown\", \"tinytex\", \"sf\",\n  # optional -- the energy-rhapsody finale (plus MuseScore, see below):\n  \"gm\"\n)\n\nfailed &lt;- character(0)\nfor (pkg in deps) {\n  ok &lt;- tryCatch(\n    {\n      pak::pkg_install(pkg, ask = FALSE)\n      message(\"  [ok]   \", pkg)\n      TRUE\n    },\n    error = function(e) {\n      message(\"  [FAIL] \", pkg, \": \", conditionMessage(e))\n      FALSE\n    }\n  )\n  if (!ok) failed &lt;- c(failed, pkg)\n}\n\nif (length(failed) == 0) {\n  message(\"All dependencies installed — you're ready to install energyRt.\")\n} else {\n  message(\"Failed packages: \", paste(failed, collapse = \", \"))\n  message(\"Install their system libraries (above), then re-run.\")\n}\n\n\n\n1.3.3 Install energyRt\nWith the dependencies in place, installing energyRt is a quick one-liner:\n\npak::pkg_install(\"optimal2050/energyRt\")\n\n# or, with remotes:\n# install.packages(\"remotes\")\n# remotes::install_github(\"optimal2050/energyRt\")",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Installing energyRt</span>"
+    ]
+  },
+  {
+    "objectID": "installation.html#check-what-you-already-have",
+    "href": "installation.html#check-what-you-already-have",
+    "title": "1  Installing energyRt",
+    "section": "1.4 Check what you already have",
+    "text": "1.4 Check what you already have\n\nlibrary(energyRt)\nen_check_dependencies()   # solver backends: GLPK / Julia / Python / GAMS / GDX\nen_check_packages()       # R packages, training extras, LaTeX engine, MuseScore\n\nen_check_dependencies() prints a status table — for each backend: installed?, version, path, and a hint for what to do next — and tells you whether at least one solver is ready. Each backend also has its own detector, e.g. en_check_glpk(), en_check_julia(), en_check_python(), en_check_pyomo(), en_check_gams().\nen_check_packages() covers the rest of the course toolkit: energyRt’s own R dependencies, the plotting/reporting extras (ggplot2, patchwork, knitr, rmarkdown, tinytex, sf, gm), and the external tools they need — a LaTeX engine for PDF reports and MuseScore for the gm music output. (en_setup() runs both checks for you.)",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Installing energyRt</span>"
+    ]
+  },
+  {
+    "objectID": "installation.html#choose-a-backend",
+    "href": "installation.html#choose-a-backend",
+    "title": "1  Installing energyRt",
+    "section": "1.5 Choose a backend",
+    "text": "1.5 Choose a backend\n\n\n\n\n\n\n\n\n\nBackend\nSoftware to install\nLicense\nNotes\n\n\n\n\nGLPK\nglpsol executable\nopen-source\nEasiest to install; slow on very large models. Used in this training.\n\n\nJulia / JuMP\nJulia + JuMP, HiGHS\nopen-source\nFast (HiGHS barrier); recommended for large models.\n\n\nPython / Pyomo\nPython + pyomo + a solver (CBC)\nopen-source\nConvenient if you already use conda.\n\n\nGAMS\nGAMS distribution\nproprietary\nNeeds a license; also enables GDX I/O.\n\n\n\nFor the training we use GLPK — it is open-source and the quickest to set up. The other three backends are optional; each is covered below when enabled.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Installing energyRt</span>"
+    ]
+  },
+  {
+    "objectID": "installation.html#glpk-recommended-for-the-training",
+    "href": "installation.html#glpk-recommended-for-the-training",
+    "title": "1  Installing energyRt",
+    "section": "1.6 GLPK (recommended for the training)",
+    "text": "1.6 GLPK (recommended for the training)\nInstall the glpsol executable.\n\nWindowsmacOSUbuntu\n\n\nNothing to install. glpsol.exe already ships with Rtools 4.5 — which you already have, since Rtools is required to build energyRt from source. It lives at C:/rtools45/x86_64-w64-mingw32.static.posix/bin/glpsol.exe.\n\n\nbrew install glpk\n\n\nsudo apt install glpk-utils\n\n\n\nThen confirm energyRt can find it. Set the path only if glpsol is not already detected — on macOS/Ubuntu the package managers put it on your PATH automatically:\n\n# Windows (Rtools 4.5): point at the bundled glpsol if not auto-detected.\n# On macOS/Ubuntu this is usually unnecessary.\nset_glpk_path(\"C:/rtools45/x86_64-w64-mingw32.static.posix/bin\")\nen_check_glpk()",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Installing energyRt</span>"
+    ]
+  },
+  {
+    "objectID": "installation.html#install-the-library-layer",
+    "href": "installation.html#install-the-library-layer",
+    "title": "1  Installing energyRt",
+    "section": "1.7 Install the library layer",
+    "text": "1.7 Install the library layer\nOnce your runtime(s) are present, install the packages each backend needs in one call:\n\nen_install_deps()   # detects runtimes, then installs the safe library layer\n\nen_install_deps() runs a dependency check, installs only the library layer for the runtimes it finds (skipping — with a warning — any that are missing), and re-checks at the end.\n\n\n\n\n\n\nNoteManual alternative (if en_install_deps() fails)\n\n\n\n\n\nen_install_deps() bundles the R, Julia, and Python layers — run them by hand:\nR layer — the GAMS GDX bridge (not on CRAN) plus optional I/O helpers:\npak::pkg_install(\"lolow/gdxtools\")   # or remotes::install_github(\"lolow/gdxtools\")\ninstall.packages(c(\"jsonlite\", \"readxl\", \"openxlsx\"))\nJulia and Python layers — use the manual blocks in the Julia / JuMP and Python / Pyomo sections above (enable them with the show-julia / show-python header params).",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Installing energyRt</span>"
+    ]
+  },
+  {
+    "objectID": "installation.html#verify-end-to-end",
+    "href": "installation.html#verify-end-to-end",
+    "title": "1  Installing energyRt",
+    "section": "1.8 Verify end-to-end",
+    "text": "1.8 Verify end-to-end\nRe-check (everything you installed should now be green), choose a default solver, and solve a tiny model:\n\nen_check_dependencies(solver_pkgs = TRUE)\nset_default_solver(solver_options$glpk)   # or julia_highs_barrier, pyomo_cbc, ...\n\n# a minimal model solve confirms the full toolchain works\n# (see the modeling chapters for assembling a model)\n\nIf two or more backends are installed, solving the same scenario with each and comparing objectives is the strongest check that your setup is correct.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Installing energyRt</span>"
+    ]
+  },
+  {
+    "objectID": "installation.html#optional-the-energy-rhapsody-finale",
+    "href": "installation.html#optional-the-energy-rhapsody-finale",
+    "title": "1  Installing energyRt",
+    "section": "1.9 Optional: the energy-rhapsody finale 🎵",
+    "text": "1.9 Optional: the energy-rhapsody finale 🎵\nThe closing chapter (?sec-rhapsody) sonifies scenarios — it turns a day of dispatch into music. It needs two optional pieces; everything else in the workshop runs without them.\n\n# 1. the gm package (composes the score)\ninstall.packages(\"gm\")\n\n# 2. MuseScore (renders score + audio) — download from https://musescore.org\n#    then, if gm cannot find it automatically, point gm at the executable:\n# options(gm.musescore_path = \"C:/Program Files/MuseScore 4/bin/MuseScore4.exe\")\n\nWithout MuseScore you can still compose (energy_rhapsody(scen, play = FALSE) returns the score object) — you just can’t hear it.",
+    "crumbs": [
+      "<span class='chapter-number'>1</span>  <span class='chapter-title'>Installing energyRt</span>"
+    ]
+  }
+]
