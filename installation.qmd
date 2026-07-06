@@ -401,7 +401,7 @@ comparing objectives is the strongest check that your setup is correct.
 
 ## Optional: the energy-rhapsody finale 🎵
 
-The closing chapter (@sec-rhapsody) *sonifies* scenarios — it turns a day of
+The closing chapter (`@sec-rhapsody`) *sonifies* scenarios — it turns a day of
 dispatch into music. It needs two optional pieces; everything else in the
 workshop runs without them.
 
