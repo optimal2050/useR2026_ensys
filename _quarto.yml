@@ -8,11 +8,13 @@ project:
   #   - slides/intro_files
 
 book:
-  title: "Energy System Modeling with R — useR! Training"
+  title: "Energy System Modeling with R"
+  subtitle: "A post-conference online series following useR! 2026"
   author: "Oleg Lugovoy, et al."
   date: today
   chapters:
     - index.qmd
+    - r-resources.qmd
     - installation.qmd
     # - part: "Build UTOPIA"
       # chapters:

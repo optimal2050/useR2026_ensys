@@ -7,9 +7,49 @@ energyRt compiles and solves the optimization model on one of several
 mathematical-programming **backends** (GLPK, Julia/JuMP, Python/Pyomo, or
 GAMS), and results come back as tidy tables.
 
-The first chapter, [Installation](installation.qmd), walks through installing R,
-the energyRt package, and at least one solver backend so your machine is ready
-for the hands-on sessions.
+New to R, or returning after a while? [R: setup and
+resources](r-resources.qmd) collects the essentials — where to get R and an IDE,
+a couple of short introductions, the packages worth having before we start, and
+the cheatsheets to keep open during the sessions.
+
+The [Installation](installation.qmd) chapter then walks through installing the
+energyRt package and at least one solver backend, so your machine is ready for
+the hands-on sessions.
+
+## Questions and discussion
+
+Questions between sessions are welcome — and best asked in the open, where the
+answer helps everyone else too.
+
+**Ask here:** [the course Q&A thread on
+Mastodon](https://mstdn.science/@optimal2050/117049007107822486)
+
+Reply to that post with anything: an install that will not cooperate, a modeling
+question, a result you cannot explain, or something you built and want to show.
+Beginner questions are explicitly welcome — that is what the thread is for.
+
+::: {.callout-note collapse="true"}
+## No Mastodon account? It takes about a minute
+
+Mastodon is a decentralized network: you register on any one server and can
+follow, reply to, and interact with people on all the others. If you have no
+preference, [**mastodon.social**](https://mastodon.social/) is the largest
+general server and a fine default — sign up there and you can reply to the
+thread straight away.
+
+Two things that trip people up when they arrive:
+
+- To find us from your own server, search for the **full handle**
+  `@optimal2050@mstdn.science` — not just `optimal2050`, which only searches
+  your own server.
+- Follow [**@optimal2050@mstdn.science**](https://mstdn.science/@optimal2050)
+  rather than relying on the hashtag. Hashtag timelines only show posts your
+  server has already seen, so following the account is what reliably brings the
+  updates to you.
+
+Tag your own posts about the course with **#optimal2050** so others can find
+them.
+:::
 
 <!-- The rest of the tutorial is hands-on, in two parts. **Build UTOPIA** -->
 <!-- (@sec-first-model – @sec-utopia): solve a first tiny model end to end, then -->

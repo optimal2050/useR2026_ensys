@@ -8,8 +8,8 @@ show-gams: false
 # Belt-and-suspenders: never execute install/solver code while rendering.
 execute:
   eval: false
-editor_options: 
-  chunk_output_type: console
+editor_options:
+  chunk_output_type: inline
 ---
 
 ```{r}
@@ -31,9 +31,11 @@ book builds.
 
 ## Prerequisites
 
-Install R (≥ 4.3) and, recommended,
+You need R (≥ 4.3) and, recommended,
 [RStudio](https://posit.co/download/rstudio-desktop/) as the IDE for the
-training.
+training. If you are setting up R for the first time — or want the introductory
+reading, key packages, and cheatsheets — start with
+[R: setup and resources](r-resources.qmd).
 
 ::: {.panel-tabset}
 ### Windows
@@ -64,12 +66,17 @@ One line installs everything — `pak`, the system-library guidance, all
 dependencies, and energyRt itself. Paste this into R:
 
 ```{r}
-source("https://raw.githubusercontent.com/optimal2050/energyRt/master/inst/install.R")
-install_energyRt()
+source("https://raw.githubusercontent.com/optimal2050/energyRt/dev/inst/install.R")
+# install_energyRt()                  # released version
+install_energyRt(branch = "dev")      # development version
 ```
 
 On Linux it prints the exact `sudo` command for any missing system libraries (it
 never runs `sudo` itself) — run that, then re-run `install_energyRt()`.
+
+For the training, use whichever the instructors announce: `install_energyRt()`
+follows the repository's default branch, and `branch = "dev"` picks up features
+that have not been released yet.
 
 Once it finishes, verify your setup in a fresh session:
 
@@ -120,8 +127,8 @@ deps <- c(
   "cli", "zoo", "registry", "options", "glue", "plyr",
   # suggested -- plots and reports (optional but recommended):
   "ggplot2", "patchwork", "knitr", "rmarkdown", "tinytex", "sf",
-  # optional -- the energy-rhapsody finale (plus MuseScore, see below):
-  "gm"
+  # optional -- remote solving on NEOS (see the NEOS section below):
+  "httr2", "xml2", "base64enc"
 )
 
 failed <- character(0)
@@ -153,19 +160,36 @@ if (length(failed) == 0) {
 With the dependencies in place, installing energyRt is a quick one-liner:
 
 ```{r}
-pak::pkg_install("optimal2050/energyRt")
+pak::pkg_install("optimal2050/energyRt@dev")
 
 # or, with remotes:
 # install.packages("remotes")
 # remotes::install_github("optimal2050/energyRt")
 ```
 
+::: {.callout-note collapse="true"}
+## `geoscales` — optional, and not published yet
+
+[`geoscales`](https://github.com/optimal2050/geoscales) is the spatial
+companion in the same stack: nested sets of regions, conversion between
+spatial resolutions, and maps of results. energyRt lists it as a *suggested*
+package and works fully without it — nothing in this training needs it.
+
+It is not on CRAN and is still pre-release, so leave it out for now. Once it is
+published you will be able to install it with:
+
+```r
+# not yet available -- do not run
+# pak::pkg_install("optimal2050/geoscales")
+```
+:::
+
 ## Check what you already have
 
 ```{r}
 library(energyRt)
 en_check_dependencies()   # solver backends: GLPK / Julia / Python / GAMS / GDX
-en_check_packages()       # R packages, training extras, LaTeX engine, MuseScore
+en_check_packages()       # R packages, training extras, LaTeX engine
 ```
 
 `en_check_dependencies()` prints a status table — for each backend: installed?,
@@ -176,21 +200,23 @@ one solver is ready. Each backend also has its own detector, e.g.
 
 `en_check_packages()` covers the rest of the course toolkit: energyRt's own R
 dependencies, the plotting/reporting extras (`ggplot2`, `patchwork`, `knitr`,
-`rmarkdown`, `tinytex`, `sf`, `gm`), and the external tools they need — a LaTeX
-engine for PDF reports and MuseScore for the `gm` music output. (`en_setup()`
-runs both checks for you.)
+`rmarkdown`, `tinytex`, `sf`), and the external tools they need, such as a LaTeX
+engine for PDF reports. (`en_setup()` runs both checks for you.)
 
 ## Choose a backend
 
 | Backend | Software to install | License | Notes |
 |---|---|---|---|
 | **GLPK** | `glpsol` executable | open-source | Easiest to install; slow on very large models. Used in this training. |
+| **NEOS** | nothing — just an email address | free for academic use | Solves remotely on CPLEX/CBC. Needs `httr2`, `xml2`; see the terms below. |
 | **Julia / JuMP** | Julia + `JuMP`, `HiGHS` | open-source | Fast (HiGHS barrier); recommended for large models. |
 | **Python / Pyomo** | Python + `pyomo` + a solver (CBC) | open-source | Convenient if you already use conda. |
 | **GAMS** | GAMS distribution | proprietary | Needs a license; also enables GDX I/O. |
 
 For the training we use **GLPK** — it is open-source and the quickest to set up.
-The other three backends are optional; each is covered below when enabled.
+The rest are optional. **NEOS** is worth knowing about even if you install
+nothing else: it needs no solver on your machine at all. The remaining three are
+covered below when enabled.
 
 ## GLPK (recommended for the training)
 
@@ -224,6 +250,47 @@ automatically:
 set_glpk_path("C:/rtools45/x86_64-w64-mingw32.static.posix/bin")
 en_check_glpk()
 ```
+
+## NEOS (remote solve, nothing to install)
+
+The [NEOS Server](https://neos-server.org) runs commercial solvers — CPLEX,
+Gurobi, MOSEK, Xpress — free of charge for academic and non-commercial use.
+energyRt can hand your model to it, so you can solve on CPLEX without
+installing a solver at all.
+
+Two routes, differing only in what they need on *your* machine:
+
+| Solver option | Needs locally |
+|---|---|
+| `neos_gams_cplex`, `neos_gams_cplex_barrier`, `neos_gams_cbc` | **nothing.** energyRt writes the GAMS model with the data inlined as text and submits that — no GAMS install. |
+| `neos_pyomo_cplex`, `neos_pyomo_cplex_barrier`, `neos_pyomo_cbc` | Python + Pyomo. The model is built locally; only the *solve* is dispatched to NEOS, so no commercial solver is needed. |
+
+Install the three R packages the client uses, set the email address NEOS
+requires on every job, and check the server is reachable:
+
+```{r}
+install.packages(c("httr2", "xml2", "base64enc"))
+
+library(energyRt)
+set_neos_email("you@example.com")   # stored as an option *and* as NEOS_EMAIL
+neos_ping()                         # TRUE if the server answers
+```
+
+Then pick a NEOS solver like any other and solve as usual:
+
+```{r}
+set_default_solver(solver_options$neos_gams_cplex)
+```
+
+::: {.callout-warning}
+## Read the NEOS terms before submitting
+
+- **Academic and non-commercial use only** for the commercial solvers.
+- **Jobs are public and stored on the server** — never submit confidential
+  data.
+- Roughly **3 GB and 8 hours** per job.
+- **Cite NEOS** in publications that use results obtained through it.
+:::
 
 ::: {.content-visible when-meta="show-julia"}
 ## Julia / JuMP
@@ -390,7 +457,7 @@ solver, and solve a tiny model:
 
 ```{r}
 en_check_dependencies(solver_pkgs = TRUE)
-set_default_solver(solver_options$glpk)   # or julia_highs_barrier, pyomo_cbc, ...
+set_default_solver(solver_options$glpk)   # or neos_gams_cplex, julia_highs_barrier, ...
 
 # a minimal model solve confirms the full toolchain works
 # (see the modeling chapters for assembling a model)
@@ -399,20 +466,62 @@ set_default_solver(solver_options$glpk)   # or julia_highs_barrier, pyomo_cbc, .
 If two or more backends are installed, solving the same scenario with each and
 comparing objectives is the strongest check that your setup is correct.
 
-## Optional: the energy-rhapsody finale 🎵
+## Save your settings
 
-The closing chapter (`@sec-rhapsody`) *sonifies* scenarios — it turns a day of
-dispatch into music. It needs two optional pieces; everything else in the
-workshop runs without them.
+Every `set_*()` call above — `set_glpk_path()`, `set_python_path()`,
+`set_gams_path()`, `set_default_solver()` — lasts only for the **current R
+session**. Rather than repeat them, write them to a configuration file once:
 
 ```{r}
-# 1. the gm package (composes the score)
-install.packages("gm")
-
-# 2. MuseScore (renders score + audio) — download from https://musescore.org
-#    then, if gm cannot find it automatically, point gm at the executable:
-# options(gm.musescore_path = "C:/Program Files/MuseScore 4/bin/MuseScore4.exe")
+en_config_write()    # saves every option that differs from the default
+en_config_show()     # what is in effect, and where each value came from
 ```
 
-Without MuseScore you can still *compose* (`energy_rhapsody(scen, play =
-FALSE)` returns the score object) — you just can't hear it.
+energyRt reads the file when the package loads, so the next session starts with
+your solver paths already in place. `en_config_show()` is the first thing to run
+whenever a solver "cannot be found" — it prints each option with a tag saying
+whether the value came from the config file, an environment variable, an R
+option, or the package default.
+
+Settings resolve in this order, first match wins:
+
+| Priority | Source | Set it with |
+|---|---|---|
+| 1 | R option | `options(en.gams_path = "...")` |
+| 2 | Environment variable | `ENERGYRT_GAMS_PATH` |
+| 3 | Project config, `./.energyRt.yml` | `en_config_write(global = FALSE)` |
+| 4 | User config | `en_config_write()` |
+| 5 | Package default | — |
+
+Ask energyRt where the user file lives rather than guessing — the location
+follows the R standard for user configuration and differs by platform:
+
+```{r}
+en_config_path()          # user-wide
+en_config_path(FALSE)     # project-local, ./.energyRt.yml
+```
+
+The **project** file is worth knowing about for coursework: dropping an
+`.energyRt.yml` next to a project pins settings for that project alone (a
+scenarios directory, say) without touching your global setup.
+
+::: {.callout-note collapse="true"}
+## Upgrading from an older energyRt
+
+Older versions kept settings in `~/.energyRt.R` — an R *script* that was
+executed at startup — and later in `~/.energyRt/config.yml`. Both still work,
+but a package may not write to your home directory, so `en_config_write()` now
+saves to the standard R user-configuration directory instead.
+
+If you have either old file, just run `en_config_write()` once: your current
+settings are saved to the new location and the old files are renamed to `.bak`.
+That last step matters — `~/.energyRt.R` is executed *after* the config file is
+applied, so while it exists it silently overrides your new settings.
+:::
+
+## Trouble?
+
+If something will not install, post the error in the [course Q&A
+thread](https://mstdn.science/@optimal2050/117049007107822486) — include your OS,
+the output of `sessionInfo()`, and the message you got. Install problems are the
+most common thing we help with, and someone else has usually hit the same one.

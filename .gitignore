@@ -6,3 +6,7 @@ _book/
 
 /.quarto/
 **/*.quarto_ipynb
+
+# private trainer notes/drafts (local only, never published)
+notes/
+tmp/

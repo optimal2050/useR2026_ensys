@@ -1,0 +1,111 @@
+---
+title: "R: setup and resources"
+execute:
+  eval: false
+---
+
+This chapter is for getting **R itself** ready and, if you need it, for
+brushing up on the language. Everything energyRt-specific — the package, the
+solver backends — is in the next chapter, [Installation](installation.qmd).
+
+You do not need to be an experienced R user to follow the series. Familiarity
+helps, but the sessions explain the modeling ideas as they go, and you are
+welcome to attend simply to watch.
+
+## Install R and an IDE
+
+| What | Where | Needed? |
+|---|---|---|
+| **R** (≥ 4.3) | <https://cloud.r-project.org/> | Required |
+| **RStudio Desktop** — the IDE we use in the sessions | <https://posit.co/downloads> | Strongly recommended |
+| **Quarto** — publishing system for reports and slides | <https://quarto.org/> | Optional |
+
+Install R **first**, then RStudio: RStudio is a front end and looks for an
+existing R installation when it starts.
+
+Recent versions of RStudio bundle Quarto, so a separate install is usually
+unnecessary — it is listed here because Quarto is worth knowing about in its own
+right, and the course materials are written in it.
+
+::: {.callout-note}
+## Windows: you also want Rtools
+
+energyRt is installed from source, which needs a compiler toolchain. On Windows
+that is [Rtools](https://cran.r-project.org/bin/windows/Rtools/) — install the
+version matching your R (Rtools 4.5 for R 4.5.x). A useful side effect: Rtools
+ships the GLPK solver we use in the training, so installing it covers two
+requirements at once. See [Installation](installation.qmd).
+:::
+
+## Learning (or refreshing) R
+
+Many good introductions exist; these are a few short ones that get you to a
+working knowledge quickly. Pick one — they cover much the same ground.
+
+- [**Introduction to R**](https://intro2r.com/) — a gentle, complete beginner's
+  book: installing, data structures, plotting, basic programming.
+- [**R intro (Otoomet, INFO 201)**](https://faculty.washington.edu/otoomet/info201-book/r-intro.html)
+  — compact and fast-moving; good if you program already and just want R's
+  idioms.
+- [**R for Data Science (2e)**](https://r4ds.hadley.nz/) — the standard
+  reference for the tidyverse workflow that energyRt's data handling follows.
+- [**Hands-On Programming with R**](https://rstudio-education.github.io/hopr/) —
+  focuses on the language itself (objects, functions, environments) rather than
+  data analysis.
+- [**swirl**](https://swirlstats.com/) — learn interactively inside the R
+  console, if you prefer doing to reading.
+
+Time is short before the first session — the highest-return preparation is being
+comfortable with data frames, `|>` pipes, and subsetting. Everything else you
+can pick up as we go.
+
+## Key packages to check first
+
+Install these before Session 1 and confirm they load. They are the ones most
+likely to need a compiler or a system library, so finding a problem now rather
+than mid-session is worth the few minutes:
+
+```{r}
+install.packages(c("dplyr", "ggplot2", "sf"))
+```
+
+```{r}
+library(dplyr)     # data manipulation — the verbs energyRt returns results for
+library(ggplot2)   # plots
+library(sf)        # spatial data and maps
+```
+
+- **dplyr** — results come back from energyRt as tidy tables; `filter()`,
+  `group_by()`, `summarise()` are how you work with them.
+- **ggplot2** — used throughout for charts of capacity, dispatch, and costs.
+- **sf** — spatial features, for models with regions and maps. It is the one
+  most likely to complain, since it links to the GDAL/GEOS/PROJ system
+  libraries. On Windows and macOS the CRAN binary includes them; on Linux
+  install `libgdal-dev libgeos-dev libproj-dev` (or your distribution's
+  equivalents) first.
+
+If `library(sf)` fails, it will not block you from the modeling parts of the
+course — only from the mapping examples.
+
+## Cheatsheets
+
+Posit maintains one-page reference cards for most of the tools we use. Printing
+or bookmarking a few is the single most useful thing you can do before the
+sessions:
+
+**<https://opensource.posit.co/resources/cheatsheets/>**
+
+Worth having open during the course:
+
+- **Data transformation with dplyr** — the verbs, joins, and grouping
+- **Data visualization with ggplot2** — geoms, scales, facets
+- **RStudio IDE** — panes, shortcuts, projects
+- **R Markdown** and **Quarto** — for writing up your own results
+- **sf / Simple Features** — if you get to the spatial examples
+
+## Getting help
+
+- `?function_name` in the console opens R's own documentation — always the
+  fastest first stop.
+- Bring anything unresolved to the [course Q&A thread](index.qmd#questions-and-discussion) —
+  it is there precisely for this, and beginner questions are welcome.
