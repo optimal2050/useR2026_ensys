@@ -7,6 +7,10 @@ _book/
 /.quarto/
 **/*.quarto_ipynb
 
-# private trainer notes/drafts (local only, never published)
-notes/
-tmp/
+# Private trainer notes/drafts (local only, never published).
+# NOTE the leading slash: it anchors these to the repository root. A bare
+# `notes/` matches ANY directory named `notes` at any depth -- which silently
+# excluded reveal.js's own `slides/builders_files/libs/revealjs/plugin/notes/`,
+# leaving the published deck unable to initialise.
+/notes/
+/tmp/
