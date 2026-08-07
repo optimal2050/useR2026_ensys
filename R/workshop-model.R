@@ -2,6 +2,42 @@
 # Each chapter starts with:  source("R/workshop-model.R")
 # It loads energyRt, sets defaults, and provides small helpers used throughout.
 
+# ---- energyRt version stamp -------------------------------------------------
+# The chapters are written against this version. Bump it whenever the course
+# starts to rely on something newer, so participants on a stale install are
+# told at the top of the session rather than by a confusing error mid-chapter.
+WS_ENERGYRT_MIN <- "0.74.2.9000"
+
+#' Check the installed energyRt against the version the workshop needs.
+#'
+#' Called automatically when this file is sourced. Re-run it yourself after
+#' updating to confirm the new version is picked up (restart R first).
+ws_check_energyRt <- function(min_version = WS_ENERGYRT_MIN) {
+  install_hint <- paste0(
+    '  source("https://raw.githubusercontent.com/optimal2050/energyRt/master/inst/install.R")\n',
+    '  install_energyRt(branch = "dev")\n',
+    "Then restart R (Session > Restart R) so the new version is loaded."
+  )
+
+  if (!requireNamespace("energyRt", quietly = TRUE)) {
+    stop("energyRt is not installed. See the Installation chapter:\n",
+         install_hint, call. = FALSE)
+  }
+
+  have <- utils::packageVersion("energyRt")
+  if (have < package_version(min_version)) {
+    warning("energyRt ", have, " is older than the ", min_version,
+            " this workshop is written against.\n",
+            "Some chapters will fail. Update with:\n", install_hint,
+            call. = FALSE, immediate. = TRUE)
+  } else {
+    message("energyRt ", have, " -- workshop needs >= ", min_version, ". OK.")
+  }
+  invisible(have)
+}
+
+ws_check_energyRt()
+
 library(energyRt)
 library(dplyr)
 library(ggplot2)

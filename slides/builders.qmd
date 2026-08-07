@@ -1,0 +1,1725 @@
+---
+title: "Building blocks of an energyRt model"
+subtitle: "The `new*()` constructors, and the system around them"
+author: "Oleg Lugovoy, et al."
+format:
+  revealjs:
+    theme: simple
+    slide-number: true
+    incremental: false
+    transition: fade
+    footer: "energyRt · useR! Training"
+    fig-align: center
+    # Reveal lays every slide out on this virtual canvas and scales it to the
+    # screen -- a SMALLER canvas makes everything look BIGGER. This is the one
+    # number to tune if the text is the wrong size.
+    width: 1050
+    height: 720
+    margin: 0.06
+    code-block-font-size: 0.52em
+    # Safety net: a slide that still overflows scrolls instead of being cut off.
+    # Slides that fit are unaffected.
+    scrollable: true
+execute:
+  eval: true
+  echo: true
+  warning: false
+  message: false
+  freeze: auto
+---
+
+```{r}
+#| echo: false
+library(energyRt)
+library(ggplot2)
+knitr::opts_chunk$set(fig.width = 5.2, fig.height = 4.2, dpi = 130)
+```
+
+```{=html}
+<style>
+.badge {
+  font-size: 0.62em; font-weight: 600; letter-spacing: .04em;
+  padding: .10em .45em; border-radius: .35em; vertical-align: middle;
+  text-transform: uppercase; white-space: nowrap;
+}
+.exp     { background: #fdf0d5; color: #8a5a00; border: 1px solid #e8c98a; }
+.planned { background: #eef2f7; color: #3d5a80; border: 1px solid #b8c9dd; }
+.limited { background: #fbe9e7; color: #9c3a2e; border: 1px solid #e8b4ac; }
+
+/* Buy vertical room from SPACING, not from type size, so the text stays big. */
+.reveal h2            { font-size: 1.5em; margin-bottom: .35em; }
+.reveal section p     { margin: .38em 0; line-height: 1.28; }
+/* Only touch top/bottom: a shorthand `margin: .25em 0` would zero the LEFT
+   margin too, and that is where ordered-list numbers are drawn -- they end up
+   outside the column box and get clipped. */
+.reveal ul, .reveal ol { margin-top: .25em; margin-bottom: .25em; line-height: 1.3; }
+.reveal ol            { list-style-position: outside; }
+.reveal li            { margin-top: .18em; margin-bottom: .18em; }
+.reveal li > ul       { margin-top: .1em; margin-bottom: .1em; }
+/* Columns clip their overflow, so give a list inside one room for its markers. */
+.reveal .column ol,
+.reveal .column ul    { padding-left: 1.2em; }
+.reveal .columns      { gap: .8em; }
+.reveal pre           { margin: .45em 0; box-shadow: none; }
+.reveal pre code      { padding: .5em .7em; line-height: 1.24; }
+.reveal blockquote    { margin: .5em 0; }
+.reveal .callout      { margin: .5em 0; font-size: .88em; }
+
+/* Tables: readable by default; .small-table only for the reference matrices. */
+.reveal table              { font-size: .9em; margin: .4em 0; }
+.reveal table th,
+.reveal table td           { padding: .18em .5em; }
+.reveal .small-table table { font-size: .74em; }
+
+/* `{.smaller}` is reveal's 0.6x. That is too aggressive here -- soften it so
+   dense slides shrink a little instead of a lot. */
+.reveal section.smaller > h2 { font-size: 1.4em; }
+.reveal .smaller           { font-size: 0.86em; }
+</style>
+```
+
+::: {.notes}
+Reference deck. Parts 1 and 6 are the live-teaching core; the rest is written to
+be browsable afterwards. Badges: experimental / planned / backend-limited.
+:::
+
+# 1 · The bricks {background-color="#f4f4f4"}
+
+## The vocabulary {.smaller}
+
+An energyRt model is a **set of objects**, each built by a `new*()` function.
+
+::: {.columns}
+::: {.column width="50%"}
+**Commodities** — the things that flow
+
+- `newCommodity()`
+
+**Processes** — the things that move or transform them
+
+- `newSupply()`, `newImport()`, `newExport()`
+- `newDemand()`
+- `newTechnology()`
+- `newStorage()`, `newTrade()`
+:::
+::: {.column width="50%"}
+**Containers** — how they are assembled
+
+- `newRepository()` — a bag of objects
+- `newHorizon()` — the years
+- `newModel()` — objects + regions + horizon
+
+**Policy** *(later chapters)*
+
+- `newConstraint()`, `newTax()`, `newSubsidy()`
+:::
+:::
+
+. . .
+
+Every process can be **drawn**: `draw(obj)` sketches its flows. We use it on
+every slide from here on.
+
+## One grammar, everywhere {.smaller}
+
+Every constructor follows the same shape:
+
+```r
+newTechnology(
+  name    = "ECOA",              # the set element -- UPPERCASE, no spaces
+  desc    = "Coal power plant",  # free text
+  input   = list(comm = "COA"),  # what it consumes
+  output  = list(comm = "ELC"),  # what it produces
+  ceff    = data.frame(comm = "COA", cinp2use = 0.4),   # parameters
+  region  = character()          # empty = every region
+)
+```
+
+- **`name`** is the identifier the solver sees.
+- **Parameters are `data.frame`s**, and may carry `region`, `year`, `slice`
+  columns. Leave a column out and the value applies to *all* of them.
+- Values between given years are **interpolated** — you supply anchors, not a
+  full grid.
+
+## `newCommodity()` — what flows {.smaller}
+
+A commodity is a *label with a unit*. It has no diagram: it is the thing that
+travels along the arrows, not a box.
+
+```{r}
+COA <- newCommodity(
+  name      = "COA",
+  desc      = "Coal",
+  unit      = "PJ",
+  timeframe = "ANNUAL",                     # ANNUAL | HOUR | ...
+  emis      = data.frame(comm = "CO2",      # released when burned
+                         unit = "kt/PJ",
+                         emis = 95)
+)
+```
+
+- **`timeframe`** — the finest resolution at which this commodity balances.
+  `ANNUAL` pools the year; `HOUR` forces hourly balancing.
+- **`emis`** — emission factors travel with the *fuel*, so every technology
+  that burns it inherits them (given `combustion = 1` on the input).
+
+## `newSupply()` — a domestic resource {.smaller}
+
+::: {.columns}
+::: {.column width="58%"}
+```{r}
+SUP_COA <- newSupply(
+  name      = "SUP_COA",
+  desc      = "Coal supply",
+  commodity = "COA",
+  unit      = "PJ",
+  supply    = data.frame(
+    cost   = 2.5,      # MEUR/PJ
+    ava.up = 500       # cap, PJ/year
+  )
+)
+```
+
+`supply` accepts `cost` and the availability bounds `ava.lo` / `ava.up` /
+`ava.fx`, plus optional `region`, `year`, `slice`.
+:::
+::: {.column width="42%"}
+```{r}
+#| echo: false
+draw(SUP_COA)
+```
+:::
+:::
+
+## `newDemand()` — what must be served {.smaller}
+
+::: {.columns}
+::: {.column width="58%"}
+```{r}
+DEM_ELC <- newDemand(
+  name      = "DEM_ELC",
+  desc      = "Electricity demand",
+  commodity = "ELC",
+  unit      = "PJ",
+  demand    = data.frame(
+    year   = c(2025, 2050),
+    demand = c(50, 80)
+  )
+)
+```
+
+Demand is **exogenous**: it is a constraint, not a choice. Values between
+2025 and 2050 are interpolated.
+:::
+::: {.column width="42%"}
+```{r}
+#| echo: false
+draw(DEM_ELC)
+```
+:::
+:::
+
+## `newImport()` — a flow from outside {.smaller}
+
+::: {.columns}
+::: {.column width="58%"}
+```{r}
+IMP_GAS <- newImport(
+  name      = "IMP_GAS",
+  desc      = "LNG import",
+  commodity = "GAS",
+  unit      = "PJ",
+  import    = data.frame(
+    price  = 9.0,     # MEUR/PJ
+    imp.up = 200      # cap, PJ/year
+  ),
+  reserve   = 3000    # cumulative cap
+)
+```
+
+`newExport()` is its mirror: `export`, `price`, `exp.up`.
+:::
+::: {.column width="42%"}
+```{r}
+#| echo: false
+draw(IMP_GAS)
+```
+:::
+:::
+
+## `newTechnology()` — the converter {.smaller}
+
+::: {.columns}
+::: {.column width="58%"}
+```{r}
+ECOA <- newTechnology(
+  name    = "ECOA",
+  desc    = "Coal power plant",
+  input   = list(comm = "COA", unit = "PJ",
+                 combustion = 1),
+  output  = list(comm = "ELC", unit = "PJ"),
+  ceff    = data.frame(comm = "COA",
+                       cinp2use = 0.40),
+  invcost = list(invcost = 2000),  # MEUR/GW
+  fixom   = 55, cap2act = 31.536,
+  olife   = 30L
+)
+```
+:::
+::: {.column width="42%"}
+```{r}
+#| echo: false
+draw(ECOA)
+```
+:::
+:::
+
+Read the diagram left to right: **`inp` → `use` → `act` → `out`**.
+
+## The five stages {.smaller}
+
+Every technology has the same internal chain. Each arrow is a coefficient:
+
+| Stage | Meaning | Coefficient |
+|---|---|---|
+| `inp` | commodity entering | — |
+| `ginp` | *grouped* input, if declared | `cinp2ginp` |
+| `use` | what the process actually consumes | `cinp2use`, `ginp2use` |
+| `act` | activity — the capacity-linked variable | `use2cact` |
+| `out` | commodity leaving | `cact2cout` |
+
+. . .
+
+- **`cap2act`** converts capacity into annual activity
+  (1 GW × 8760 h = 31.536 PJ).
+- Give **one** efficiency coefficient and the rest default to 1 — that is why
+  `cinp2use = 0.40` alone describes a 40 % plant.
+
+## Grouped input: co-firing {.smaller}
+
+::: {.columns}
+::: {.column width="58%"}
+Two fuels feeding **one** boiler. The group is the thing with an efficiency;
+the members compete for share within it.
+
+```{r}
+ECOFIRE <- newTechnology(
+  name   = "ECOFIRE",
+  input  = list(comm = c("COA", "BIO"),
+                unit = c("PJ", "PJ"),
+                group = c("FUEL", "FUEL"),
+                combustion = c(1, 1)),
+  output = list(comm = "ELC", unit = "PJ"),
+  group  = data.frame(group = "FUEL",
+                      desc = "Boiler fuel", unit = "PJ"),
+  geff   = data.frame(group = "FUEL",
+                      ginp2use = 0.38),
+  ceff   = data.frame(comm = c("COA", "BIO"),
+                      cinp2ginp = c(1, 1),
+                      share.up  = c(1, 0.30)),
+  cap2act = 31.536, olife = 30L
+)
+```
+:::
+::: {.column width="42%"}
+```{r}
+#| echo: false
+draw(ECOFIRE)
+```
+:::
+:::
+
+## Grouped input: what the picture tells you {.smaller}
+
+::: {.columns}
+::: {.column width="52%"}
+- The **`ginp` column appears** — it is absent for a single-fuel technology.
+- `FUEL` is a node: both fuels flow into it, and *it* carries the efficiency
+  (`ginp2use: 0.38`).
+- `[0, 0.30]` next to BIO is the **share bound**: biomass may supply at most
+  30 % of the boiler's fuel.
+- `[0, 1]` next to COA: coal may supply all of it.
+
+. . .
+
+**Why group at all?** Without a group each fuel would need its own efficiency
+and could not be constrained *relative to the other*. Shares are the point.
+:::
+::: {.column width="48%"}
+```{r}
+#| echo: false
+draw(ECOFIRE)
+```
+:::
+:::
+
+## Multiple outputs: CHP {.smaller}
+
+::: {.columns}
+::: {.column width="58%"}
+One activity, two products. `cact2cout` sets how much of each comes out per
+unit of activity.
+
+```{r}
+ECHP <- newTechnology(
+  name   = "ECHP",
+  desc   = "Gas CHP: power and heat",
+  input  = list(comm = "GAS", unit = "PJ",
+                combustion = 1),
+  output = list(comm = c("ELC", "HEA"),
+                unit = c("PJ", "PJ")),
+  ceff   = data.frame(
+    comm      = c("ELC", "HEA"),
+    cact2cout = c(1, 1.2)      # heat/power ratio
+  ),
+  cap2act = 31.536, olife = 25L
+)
+```
+
+Fixing both makes the ratio rigid; bound them instead for a flexible CHP.
+:::
+::: {.column width="42%"}
+```{r}
+#| echo: false
+draw(ECHP)
+```
+:::
+:::
+
+## Auxiliary commodities {.smaller}
+
+**Main** commodities (red) are tied to capacity and activity. **Auxiliary**
+commodities (blue) are anything else the process consumes or emits — land,
+water, steel, labour, pollutants.
+
+They are declared in `aux`, and linked in `aeff` by choosing *which* quantity
+they scale with:
+
+| Coefficient | Scales with |
+|---|---|
+| `cinp2ainp`, `cinp2aout` | main commodity **input** |
+| `cout2ainp`, `cout2aout` | main commodity **output** |
+| `act2ainp`, `act2aout` | **activity** |
+| `cap2ainp`, `cap2aout` | **installed capacity** |
+| `ncap2ainp`, `ncap2aout` | **new capacity** (built this year) |
+
+. . .
+
+`…ainp` = the process *consumes* it, `…aout` = the process *produces* it.
+
+## Aux linked to capacity, activity, new capacity {.smaller}
+
+::: {.columns}
+::: {.column width="58%"}
+```{r}
+ENUC <- newTechnology(
+  name   = "ENUC",
+  desc   = "Nuclear: land, water, steel",
+  input  = list(comm = "NUC", unit = "PJ"),
+  output = list(comm = "ELC", unit = "PJ"),
+  aux    = data.frame(
+    acomm = c("LAND", "WAT", "STEEL"),
+    unit  = c("km2", "Mm3", "kt")),
+  aeff   = data.frame(
+    acomm     = c("LAND", "WAT", "STEEL"),
+    cap2ainp  = c(0.5,  NA,   NA),   # per GW held
+    act2ainp  = c(NA,   0.02, NA),   # per PJ made
+    ncap2ainp = c(NA,   NA,   40)    # per GW built
+  ),
+  ceff = data.frame(comm = "NUC", cinp2use = 0.35),
+  cap2act = 31.536, olife = 50L
+)
+```
+:::
+::: {.column width="42%"}
+```{r}
+#| echo: false
+draw(ENUC)
+```
+:::
+:::
+
+## Why the distinction matters {.smaller}
+
+::: {.columns}
+::: {.column width="52%"}
+Three physically different things, and the diagram labels each one:
+
+- **`cap2ainp: 0.50`** — land is occupied for as long as the plant *stands*,
+  whether or not it runs.
+- **`act2ainp: 0.02`** — cooling water is drawn only when it *generates*.
+- **`ncap2ainp: 40.00`** — steel is consumed **once**, in the year the plant is
+  *built*.
+
+. . .
+
+Pick the wrong one and the model is quietly wrong: steel on `cap2ainp` would
+re-buy the whole plant every year.
+:::
+::: {.column width="48%"}
+```{r}
+#| echo: false
+draw(ENUC)
+```
+:::
+:::
+
+## Aux as emissions {.smaller}
+
+::: {.columns}
+::: {.column width="58%"}
+Pollutants that depend on the *plant*, not only the fuel, are auxiliary
+**outputs** scaled by fuel input:
+
+```{r}
+ECOA_E <- newTechnology(
+  name   = "ECOA_E",
+  desc   = "Coal plant with NOx and SOx",
+  input  = list(comm = "COA", unit = "PJ",
+                combustion = 1),
+  output = list(comm = "ELC", unit = "PJ"),
+  aux    = data.frame(acomm = c("NOX", "SOX"),
+                      unit  = c("kt", "kt")),
+  aeff   = data.frame(acomm = c("NOX", "SOX"),
+                      comm  = "COA",
+                      cinp2aout = c(0.30, 0.45)),
+  ceff = data.frame(comm = "COA", cinp2use = 0.40),
+  cap2act = 31.536, olife = 30L
+)
+```
+
+Contrast with CO~2~, which sits on the **commodity** — every burner inherits it.
+:::
+::: {.column width="42%"}
+```{r}
+#| echo: false
+draw(ECOA_E)
+```
+:::
+:::
+
+## `newStorage()` — moving energy in time {.smaller}
+
+::: {.columns}
+::: {.column width="58%"}
+```{r}
+STG_BTR <- newStorage(
+  name      = "STG_BTR",
+  desc      = "4-hour battery",
+  commodity = "ELC",
+  seff      = data.frame(inpeff = 0.92,
+                         outeff = 0.92),
+  cap2stg   = 4,          # GWh per GW
+  invcost   = list(invcost = 800),
+  olife     = 15L
+)
+```
+
+- `seff` — charge / discharge efficiency, and `stgeff` for standing losses.
+- `cap2stg` — how many hours of storage one unit of capacity buys.
+- Only meaningful with **sub-annual slices** — see the *Time and storage*
+  chapter.
+:::
+::: {.column width="42%"}
+```{r}
+#| echo: false
+draw(STG_BTR)
+```
+:::
+:::
+
+## `newTrade()` — moving energy in space {.smaller}
+
+::: {.columns}
+::: {.column width="58%"}
+```{r}
+TBD_ELC <- newTrade(
+  name      = "TBD_ELC",
+  desc      = "Interregional power line",
+  commodity = "ELC",
+  routes    = data.frame(          # which links exist
+    src = c("R1", "R2"),
+    dst = c("R2", "R1")
+  ),
+  trade     = data.frame(          # their parameters
+    src  = c("R1", "R2"),
+    dst  = c("R2", "R1"),
+    teff = 0.95                    # line losses
+  ),
+  invcost = list(invcost = 1500)
+)
+```
+
+Two slots, two jobs: **`routes`** declares the links, **`trade`** parameterises
+them. One is not derived from the other — a route with no parameters is
+unconstrained, and parameters for an undeclared route are ignored.
+
+Trade is **directional**, so a bidirectional line is *two* rows in each. Note it
+has no `region` — the regions are `src` and `dst`.
+:::
+::: {.column width="42%"}
+```{r}
+#| echo: false
+draw(TBD_ELC)
+```
+:::
+:::
+
+## `newRepository()` — the bag {.smaller}
+
+A repository is an ordered collection of objects. It has no behaviour of its
+own; it exists so a model can be assembled from named parts.
+
+```{r}
+repo <- newRepository(
+  name = "power",
+  COA, SUP_COA, ECOA, ECOFIRE, ECHP, ENUC, STG_BTR, DEM_ELC
+)
+```
+
+```{r}
+#| echo: false
+cat("class:", class(repo), "\n")
+cat("objects:", length(repo), "\n")
+```
+
+- Repositories can be **combined** and passed around, so a scenario is
+  "base repo + a few replacements".
+- `add()` / `update()` return a *modified copy* — nothing is mutated in place.
+
+## `newHorizon()` and `newModel()` {.smaller}
+
+```{r}
+mod <- newModel(
+  name     = "POWER",
+  desc     = "A small power system",
+  data     = repo,
+  region   = "R1",
+  discount = 0.05,
+  horizon  = newHorizon(
+    period     = 2025:2050,
+    intervals  = c(1, 5, 5, 5, 5, 5), # years per period
+    mid_is_end = TRUE
+  )
+)
+```
+
+- **`region`** — the model's regions; objects with no `region` apply to all.
+- **`horizon`** — milestone years. Periods grow, so the near term is resolved
+  finely and the far term cheaply.
+- The model is still just a **description**. `interpolate_model()` expands it
+  over regions × years × slices; `solve_scenario()` solves it.
+
+## Putting it together {.smaller}
+
+| Function | Makes | Drawn? | Key arguments |
+|---|---|:--:|---|
+| `newCommodity()` | a flow | — | `unit`, `timeframe`, `emis` |
+| `newSupply()` | a resource | ✔ | `supply`: `cost`, `ava.up` |
+| `newDemand()` | an obligation | ✔ | `demand` |
+| `newImport()` / `newExport()` | rest-of-world flow | ✔ | `price`, `imp.up` / `exp.up` |
+| `newTechnology()` | a converter | ✔ | `input`, `output`, `ceff`, `aeff`, `invcost` |
+| `newStorage()` | time shifting | ✔ | `seff`, `cap2stg` |
+| `newTrade()` | space shifting | ✔ | `routes`, then `trade`: `src`, `dst`, `teff` |
+| `newRepository()` | a bag of objects | — | `name`, `...` |
+| `newModel()` | the description | — | `data`, `region`, `horizon` |
+
+. . .
+
+**When in doubt, `draw()` it.** If the picture is not the system you meant, the
+model is not either.
+
+# 2 · Where objects live: time {background-color="#f4f4f4"}
+
+## Calendars: the time structure {.smaller}
+
+A **calendar** declares the sub-annual structure every flow is balanced on. It
+is a set of nested *timeframes*, each split into *slices* carrying a share of
+the year.
+
+```{r}
+make_timetable(list(SEASON  = c("WI", "SP", "SU", "FA"),
+                    DAYNITE = c("D", "N")))  |> head(4)
+```
+
+- Nesting is the grammar: `SEASON` above `DAYNITE` gives 8 slices.
+- Every parent timeframe currently needs the **same number of children** — a
+  regular tree, not a ragged one.
+- `newCalendar(name, timetable, year_fraction)` turns a timetable into an object.
+
+## Ready-made calendars {.smaller}
+
+Eight ship with the package — the fastest way to change a model's time
+resolution is to swap one in.
+
+```{r}
+names(calendars)
+```
+
+::: {.columns}
+::: {.column width="46%"}
+```{r}
+#| echo: false
+#| fig-width: 4.6
+#| fig-height: 3.6
+autoplot(calendars$utopia_seasons)
+```
+:::
+::: {.column width="54%"}
+```{r}
+#| echo: false
+#| fig-width: 5.4
+#| fig-height: 3.6
+autoplot(calendars$utopia_s4h24)
+```
+:::
+:::
+
+Each rectangle is one slice, sized by its share of the year. `ANNUAL` sits on
+top; finer timeframes stack below.
+
+## Sampled vs full calendars {.smaller}
+
+::: {.columns}
+::: {.column width="52%"}
+A **sampled** calendar keeps a representative subset of slices and declares what
+fraction of the year it covers:
+
+```{r}
+sub  <- calendars$d365_h24_subset_1day_per_month
+full <- calendars$d365_h24
+
+data.frame(slices        = c(nrow(sub@timetable), nrow(full@timetable)),
+           year_fraction = round(c(sub@year_fraction, full@year_fraction), 4),
+           row.names     = c("sampled", "full"))
+```
+
+One day per month at hourly resolution — **288 slices instead of 8760**, about
+3.3 % of the year.
+
+`year_fraction` is what keeps annual quantities honest when only part of the
+year is modelled.
+:::
+::: {.column width="48%"}
+```{r}
+#| echo: false
+#| fig-width: 5.0
+#| fig-height: 4.4
+autoplot(sub, reference = full)
+```
+
+Passing `reference =` lays out the **full** structure and fills only the slices
+the sampled calendar declares.
+:::
+:::
+
+## Aggregating time in results {.smaller}
+
+Sampling reduces what is *solved*. Aggregation changes what you *read back* —
+`getData()` takes a `timeframe` argument:
+
+| `timeframe =` | Returns |
+|---|---|
+| `"lowest"` *(default)* | flows summed up to the coarsest level, normally `ANNUAL` |
+| `"highest"` | native resolution, as stored |
+| `"all"` | every level, stacked |
+| `"SEASON"`, `"YDAY"`, … | one named calendar level |
+
+. . .
+
+State variables (a storage level, say) are **returned unchanged** — summing a
+level over slices is meaningless, and the package knows the difference.
+
+::: {.callout-note}
+## Roadmap [planned]{.badge .planned}
+Nested timeframes and slice aggregation/disaggregation as a first-class
+operation move to the **timescales** package — the temporal companion to
+`geoscales`. Today energyRt's calendar machinery is self-contained.
+:::
+
+## Horizons: the years {.smaller}
+
+::: {.columns}
+::: {.column width="55%"}
+```{r}
+h <- newHorizon(period    = 2025:2050,
+                intervals = c(1, 5, 5, 5, 5, 5))
+h@intervals
+```
+
+- **`period`** — the full span of years.
+- **`intervals`** — either lengths (as here) or a `data.frame` with
+  `start`, `mid`, `end`.
+- The first interval is forced to a single **base year**
+  (`force_BY_interval_to_1_year = TRUE`).
+- The **mid** is the milestone year the solver actually optimises.
+:::
+::: {.column width="45%"}
+```{r}
+#| echo: false
+#| fig-width: 5.0
+#| fig-height: 3.8
+autoplot(h)
+```
+:::
+:::
+
+## Where the milestone year sits {.smaller}
+
+The same intervals, three placements of the mid-year — the dashed line:
+
+```{r}
+#| echo: false
+#| fig-width: 13
+#| fig-height: 3.6
+library(patchwork)
+p1 <- autoplot(newHorizon(period = 2025:2050, intervals = c(1, 5, 5, 5, 5, 5))) +
+  labs(title = "default: midpoint")
+p2 <- autoplot(newHorizon(period = 2025:2050, intervals = c(1, 5, 5, 5, 5, 5),
+                          mid_is_start = TRUE)) + labs(title = "mid_is_start = TRUE")
+p3 <- autoplot(newHorizon(period = 2025:2050, intervals = c(1, 5, 5, 5, 5, 5),
+                          mid_is_end = TRUE))   + labs(title = "mid_is_end = TRUE")
+p1 + p2 + p3
+```
+
+. . .
+
+It matters because **costs and demands are evaluated at the mid**. `mid_is_end`
+puts the decision at the end of each period — the convention used in the models
+we build here. Choose once, and keep it consistent across scenarios you compare.
+
+## Ready-made horizons {.smaller}
+
+```{r}
+names(horizons)
+```
+
+```{r}
+#| echo: false
+#| fig-width: 11
+#| fig-height: 3.2
+autoplot(horizons$Y2020_2060_by_5) + labs(title = "horizons$Y2020_2060_by_5")
+```
+
+Single-year horizons (`Y2030`, `Y2050`, …) are useful for a fast structural
+check: build the model, solve one year, confirm it is feasible before paying for
+the full run.
+
+# 3 · Where objects live: space {background-color="#f4f4f4"}
+
+## Regions {.smaller}
+
+There is **no `newRegion()`**. Regions are a flat character vector declared on
+the model:
+
+```{r}
+#| eval: false
+newModel("POWER", data = repo, region = c("R1", "R2", "R3"))
+```
+
+- Objects carry an optional `region` slot; **leaving it empty means every
+  region**.
+- `trade` is the exception — it has no `region`, only `src` and `dst`.
+- `get_region(obj)` walks any object and reports the regions it refers to. It is
+  deliberately schema-agnostic, so it keeps working as region information is
+  added to classes that do not carry it yet.
+
+```{r}
+get_region(TBD_ELC)
+```
+
+## Geoscales: nesting regions {.smaller}
+
+A **geoscale** (from the companion `geoscales` package) describes how regions
+nest into coarser levels, their weights, and optionally their geometry.
+
+```{r}
+gs <- utopia_geoscale()   # UTOPIA's 11 regions: nation > zone > region
+class(gs)
+```
+
+::: {.callout-important}
+## The one sentence to remember
+A geoscale is used for **plotting, reporting and subsetting only**. Attaching
+one *never changes the optimisation model*. The extra members stay inert until
+some commodity names a coarser level.
+:::
+
+- `setGeoscale()` / `getGeoscale()` on a `config`, `model` or `scenario`.
+- `getData(..., geolevel = )` aggregates results up the hierarchy — `"finest"`,
+  `"coarsest"`, `"all"`, or a named level.
+- `plot_map()` draws results on the geometry (needs `sf`).
+- Inter-regional **flows** are returned unchanged by `geolevel` aggregation —
+  summing a flow across regions would double-count it.
+
+# 4 · Commodities in depth {background-color="#f4f4f4"}
+
+## Nine slots, and what each decides {.smaller}
+
+::: {.small-table}
+| Slot | Decides |
+|---|---|
+| `name`, `desc` | identity |
+| `limtype` | how the balance closes: `LO` (default, excess allowed), `UP`, `FX` |
+| `timeframe` | **where it balances in time** — finest level in the model by default |
+| `geolevel` | **where it balances in space** [GLPK / GAMS only]{.badge .limited} |
+| `unit` | the commodity's main unit |
+| `emis` | emission factors carried by the fuel |
+| `agg` | weights aggregating several commodities into this one |
+| `misc` | free-form; never read by the model |
+:::
+
+. . .
+
+The commodity is deliberately **lean**: it is a label with balancing rules. All
+the engineering lives on the processes that consume and produce it.
+
+## Where a commodity lives {.smaller}
+
+::: {.columns}
+::: {.column width="50%"}
+**In time — `timeframe`**
+
+```{r}
+#| eval: false
+newCommodity("ELC", timeframe = "HOUR")
+newCommodity("COA", timeframe = "ANNUAL")
+```
+
+Electricity must balance every hour; coal only has to balance over the year.
+Setting `ANNUAL` on a carrier that genuinely needs hourly matching is one of the
+easiest ways to build a model that is quietly too optimistic.
+:::
+::: {.column width="50%"}
+**In space — `geolevel`** [experimental]{.badge .exp}
+
+```{r}
+#| eval: false
+newCommodity("STEEL", geolevel = "nation")
+```
+
+Naming a coarser level asserts **free, unlimited transport within that level**.
+That suits an integrated goods market; it is wrong for a network-constrained
+carrier such as electricity.
+
+Requires a geoscale on the model config.
+:::
+:::
+
+## Carbon and other emissions {.smaller}
+
+::: {.columns}
+::: {.column width="54%"}
+Emission factors ride on the **fuel**, so every technology burning it inherits
+them:
+
+```{r}
+COA2 <- newCommodity("COA", unit = "PJ",
+  emis = data.frame(comm = "CO2", unit = "kt/PJ", emis = 95))
+GAS2 <- newCommodity("GAS", unit = "PJ",
+  emis = data.frame(comm = "CO2", unit = "kt/PJ", emis = 56))
+```
+
+The factor only fires where the consuming technology declares
+`combustion = 1` on that input.
+
+There is **no separate carbon-content slot** — `@emis` is the single mechanism,
+and it generalises to any emitted species.
+:::
+::: {.column width="46%"}
+```{r}
+#| echo: false
+#| fig-width: 4.8
+#| fig-height: 3.6
+autoplot(COA2, GAS2)
+```
+:::
+:::
+
+::: {.callout-note}
+## Roadmap [planned]{.badge .planned}
+Physical properties — mass, volume, heating value — are **not** slots today, and
+`@misc` is the documented place to park them meanwhile. Adding them as
+first-class, unit-aware slots is a candidate for a future release.
+:::
+
+## Plant-specific pollutants are different {.smaller}
+
+A useful contrast, since both end up as "emissions":
+
+| Where it lives | Mechanism | Use when |
+|---|---|---|
+| **Commodity** `@emis` | factor per unit of fuel burned | CO~2~ — depends only on the fuel's carbon |
+| **Technology** `aeff` `cinp2aout` | auxiliary *output* scaled by input | NO~x~, SO~x~ — depend on the burner, not just the fuel |
+
+Two plants burning identical coal emit identical CO~2~ and quite different NO~x~.
+That is the whole distinction.
+
+# 5 · Vintages and clusters {background-color="#f4f4f4"}
+
+## One technology, many variants {.smaller}
+
+Real technologies are not one thing. A wind fleet has **resource grades** that
+differ in cost and yield, and **build years** that differ in efficiency and
+lifetime. energyRt expresses both on a *single* object:
+
+| Dimension | Slot | Means |
+|---|---|---|
+| **vintage** | `@vintage` | when it was built — investment window and operational life |
+| **cluster** | `@cluster` | which grade or variant it is — resource quality, siting class |
+
+. . .
+
+`@vintage` **replaces** the older `start` / `end` / `olife` slots: one row per
+(`vintage`, `region`, `cluster`) giving that variant's window and life. A single
+row with `vintage = NA` is an ordinary un-vintaged technology.
+
+## Declaring vintages {.smaller}
+
+::: {.columns}
+::: {.column width="55%"}
+The short form is usually enough — `start` and `end` **default to the vintage
+year**, so naming the years defines properly windowed vintages:
+
+```{r}
+EWIN <- newTechnology(
+  name    = "EWIN",
+  input   = list(comm = "WIN"),
+  output  = list(comm = "ELC"),
+  ceff    = data.frame(comm = "WIN", cinp2use = 1),
+  vintage = c("2025", "2040"),
+  cap2act = 31.536
+)
+EWIN@vintage
+```
+:::
+::: {.column width="45%"}
+The table form when the variants differ:
+
+```{r}
+#| eval: false
+vintage = data.frame(
+  vintage = c("2025", "2040"),
+  olife   = c(25L, 30L)      # newer lasts longer
+)
+```
+
+Columns available: `vintage`, `region`, `cluster`, `start`, `end`, `olife`.
+:::
+:::
+
+## Declaring clusters {.smaller}
+
+```{r}
+EWINVC <- newTechnology(
+  name    = "EWINVC",
+  desc    = "Wind: two resource grades, two vintages",
+  input   = list(comm = "WIN"),
+  output  = list(comm = "ELC"),
+  ceff    = data.frame(comm = "WIN", cinp2use = 1),
+  cluster = data.frame(cluster = c("best", "mid"),
+                       desc    = c("High wind sites", "Medium wind sites"),
+                       order   = 1:2),
+  vintage = data.frame(vintage = c("2025", "2040"), olife = 25L),
+  invcost = data.frame(cluster = c("best", "best", "mid",  "mid"),
+                       vintage = c("2025", "2040", "2025", "2040"),
+                       invcost = c(1400,   1150,   1600,   1300)),
+  cap2act = 31.536
+)
+```
+
+. . .
+
+**Nothing new was learned.** Parameters vary by variant by gaining one more
+selector column — exactly like `region` or `year`. `2 × 2 = 4` cells, one
+object.
+
+## `draw()` reads the whole grid {.smaller}
+
+::: {.columns}
+::: {.column width="42%"}
+Ask for one cell and you get it, with the other vintages behind it as **ghosts**:
+
+```{r}
+#| eval: false
+draw(EWINVC, vintage = "2040",
+             cluster = "best")
+```
+
+The faded stack is the *vintage marginal* through the selected cell — the cells
+sharing its cluster. Earlier vintages sit down-left, later ones up-right, so the
+depth of the stack is the technology's history.
+:::
+::: {.column width="58%"}
+```{r}
+#| echo: false
+#| fig-width: 6.4
+#| fig-height: 4.8
+draw(EWINVC, vintage = "2040", cluster = "best")
+```
+:::
+:::
+
+## Clusters: rail, deck, or neither {.smaller}
+
+`cluster_style` changes how the sibling grades are rendered around the selected
+cell.
+
+::: {.columns}
+::: {.column width="33%"}
+```{r}
+#| echo: false
+#| fig-width: 4.2
+#| fig-height: 3.6
+draw(EWINVC, vintage = "2040", cluster_style = "rail")
+```
+`"rail"` *(default)*
+:::
+::: {.column width="33%"}
+```{r}
+#| echo: false
+#| fig-width: 4.2
+#| fig-height: 3.6
+draw(EWINVC, vintage = "2040", cluster_style = "deck")
+```
+`"deck"`
+:::
+::: {.column width="33%"}
+```{r}
+#| echo: false
+#| fig-width: 4.2
+#| fig-height: 3.6
+draw(EWINVC, vintage = "2040", cluster_style = "none")
+```
+`"none"`
+:::
+:::
+
+Cosmetic, not semantic — pick whichever makes the point on your slide.
+
+## Seeing every cell at once {.smaller}
+
+Pass `"all"` to facet a dimension instead of selecting from it:
+
+```{r}
+#| fig-width: 11
+#| fig-height: 4.6
+draw(EWINVC, vintage = "all", cluster = "all")
+```
+
+`max_facets = 24L` guards the obvious accident — a 4-vintage × 11-region
+technology asked to draw everything.
+
+## From variants to model objects {.smaller}
+
+Variants are **replicated into ordinary technologies before interpolation** —
+the solver never sees the vintage/cluster idea, only more technologies.
+
+```{r}
+#| eval: false
+mod <- expand_variants(mod)     # or expand_tech_variants(mod)
+```
+
+Names gain a suffix from `.variant_prefix`, defaulting to `_VIN` and `_CL`:
+`EWINVC` becomes `EWINVC_CLbest_VIN2025`, `EWINVC_CLmid_VIN2040`, and so on.
+
+. . .
+
+Reading them back after a solve:
+
+```{r}
+#| eval: false
+getVariants(scen)                                   # which variants exist
+variantSummary(scen, name = "EWINVC", by = "vintage")  # rolled up again
+```
+
+The point of the design: **declare once, compare by grade or by build year**,
+without hand-maintaining a dozen near-identical technology objects.
+
+## `design()` — the object, back as code {.smaller}
+
+::: {.columns}
+::: {.column width="46%"}
+Useful when an object came from a dataset or a colleague and you want to see
+what it actually says:
+
+```{r}
+#| eval: false
+design(ECOA)
+```
+
+Returns (and can write to a file) the `newTechnology()` call that recreates it.
+
+Note it renders the **modern `vintage` table** even when the object was built
+with the older `olife =` argument — a quick way to migrate old code.
+
+[technology only]{.badge .limited} — no `design()` method for other classes yet.
+:::
+::: {.column width="54%"}
+```{r}
+#| echo: false
+#| class-output: small-table
+design(ECOA)
+```
+:::
+:::
+
+# 6 · From description to numbers {background-color="#f4f4f4"}
+
+## What `interpolate_model()` does {.smaller}
+
+The model object is a *description*. Interpolation compiles it into a
+solver-ready scenario:
+
+```{r}
+#| eval: false
+scen <- interpolate_model(mod, name = "BASE")
+```
+
+1. collect the sets — regions, years, slices, commodities, processes
+2. build the **maps**: membership, calendar, lifespan, value and cost domains
+3. extract the numeric parameters and **interpolate them over years**
+4. compute equivalent annual costs
+5. compile user constraints
+6. reduce the data (prune / fold / densify / trim — Part 8)
+7. validate
+
+. . .
+
+Only step 3 is interpolation in the literal sense. Regions and slices are
+handled by **expanding `NA` wildcards** — an omitted `region` column means *all
+regions*, and it is expanded, not interpolated.
+
+## Anchors in, series out {.smaller}
+
+::: {.columns}
+::: {.column width="46%"}
+You supply anchor years; the pipeline fills the rest:
+
+```{r}
+ECOA_Y <- newTechnology(
+  name    = "ECOA_Y",
+  input   = list(comm = "COA", combustion = 1),
+  output  = list(comm = "ELC"),
+  ceff    = data.frame(comm = "COA", cinp2use = 0.40),
+  invcost = data.frame(year    = c(2025, 2040, 2050),
+                       invcost = c(2000, 1800, 1700)),
+  cap2act = 31.536, olife = 30L
+)
+```
+
+`getData()` returns both views — the given rows, and the interpolated series:
+
+```{r}
+#| eval: false
+getData(ECOA_Y, name = "invcost", merge = FALSE)
+getData(ECOA_Y, name = "invcost", merge = FALSE,
+        interpolate = TRUE, year = 2025:2050)
+```
+:::
+::: {.column width="54%"}
+```{r}
+#| echo: false
+#| fig-width: 5.6
+#| fig-height: 4.4
+given <- getData(ECOA_Y, name = "invcost", merge = FALSE)$invcost
+itp   <- getData(ECOA_Y, name = "invcost", merge = FALSE,
+                 interpolate = TRUE, year = 2025:2050)$invcost
+ggplot() +
+  geom_line(data = itp, aes(year, invcost), colour = "#2C6E9B", linewidth = .9) +
+  geom_point(data = given, aes(year, invcost), size = 3, colour = "#B7410E") +
+  labs(title = "ECOA_Y · invcost",
+       subtitle = "points: given anchors · line: interpolated",
+       x = "year", y = "MEUR/GW") +
+  theme_energyRt()
+```
+:::
+:::
+
+## Interpolation rules {.smaller}
+
+Each parameter carries a rule, stored as a composite of three tokens:
+
+| Token | Alias | Applies |
+|---|---|---|
+| `back` | `bwd` | before the first anchor — backward fill |
+| `inter` | `mid` | between anchors — linear |
+| `forth` | `fwd` | after the last anchor — forward fill |
+
+The default nearly everywhere is **`back.inter.forth`**: constant outside the
+anchors, linear between them. That is why a single value with no `year` column
+becomes a flat line across the whole horizon.
+
+. . .
+
+Rules live in the `config@interpolation` table. To change them, build a modified
+`config` (or `settings`) and pass the object —
+there is **no scalar `interpolate_model(interpolation = ...)` argument yet**
+[planned]{.badge .planned}.
+
+# 7 · Scenarios {background-color="#f4f4f4"}
+
+## A scenario is interpolated/solved model with additions {.smaller}
+
+`interpolate_model()` accepts **energyRt objects in `...`** and folds them into
+the model before the pipeline runs. That single mechanism is the whole scenario
+API:
+
+```{r}
+#| eval: false
+interpolate_model(mod, "CO2CAP",  co2_cap)                  # a policy constraint
+interpolate_model(mod, "SAMPLED", cal_sampled)              # a sampled calendar
+interpolate_model(mod, "SHORT",   newHorizon(period = 2025:2035))
+interpolate_model(mod, "HIGHDEM", repo_high_demand)         # a whole repository
+```
+
+| Pass an object of class | It replaces / adds |
+|---|---|
+| `calendar` | the scenario's time structure |
+| `horizon` | the milestone years |
+| `config` / `settings` | the whole settings block |
+| `repository` | added to the model |
+| `technology`, `commodity`, `constraint`, `tax`, … | bundled into a scenario-specific repository |
+
+Anything unrecognised is **warned about**, not silently ignored.
+
+## The same objects work at solve time {.smaller}
+
+`solve_scenario()` / `solve_mod()` split their `...`: run-control arguments stay,
+everything else is routed straight to interpolation.
+
+```{r}
+#| eval: false
+solve_mod(mod, "COARSE", solver = solver_options$glpk,
+          calendar = calendars$utopia_seasons)   # -> forwarded to interpolation
+```
+
+. . .
+
+The scenario folder name records what was swapped —
+`{scenario}_{model}_{calendar}_{horizon}` — computed from the **final** settings,
+so a substituted calendar shows up in the path:
+
+```
+COARSE_UTOPIA_utopia-seasons_base/
+```
+
+::: {.callout-note}
+## Not yet [planned]{.badge .planned}
+Swapping **regions**, and named scalar overrides such as
+`interpolate_model(mod, "S", discount = 0.07)`. Both are TODOs in the pipeline;
+for now, pass a full `config`/`settings` object.
+:::
+
+# 8 · Scale: data and models {background-color="#f4f4f4"}
+
+```{r}
+#| echo: false
+set_scenarios_path(file.path(tempdir(), "deck-scenarios"))
+um <- utopia_modules$electricity$R1
+mod_u <- newModel("UTOPIA", data = um$repo,
+                  calendar = utopia_modules$calendars$utopia_s4h24,
+                  region   = um$regions,
+                  horizon  = utopia_modules$horizons$base, discount = 0.05)
+scen_u <- interpolate_model(mod_u, name = "BASE", verbose = FALSE) |>
+  solve_scenario(solver = solver_options$glpk, echo = FALSE)
+```
+
+## How big is this model? {.smaller}
+
+```{r}
+model_size(scen_u, top_n = 5)
+```
+
+`model_size()` counts parameter rows and **estimates** variables and constraints
+from the gating maps — enough to decide whether a run is worth starting.
+
+## Four ways to make it smaller {.smaller}
+
+::: {.small-table}
+| Operation | What it does | Lossless? |
+|---|---|---|
+| **prune** | drops rows whose value equals the parameter's default | yes — an absent tuple reads back as the default |
+| **fold** | replaces a whole column with `NA` wildcards where the value does not vary across the *entire* allowed membership | yes — reversible with `unfold_*` |
+| **trim** | drops rows that no equation-domain map indexes, i.e. data the model never reads | yes |
+| **densify** | the **opposite** — materialises default rows, because GAMS has no parameter default and reads an absent tuple as `0` | n/a |
+:::
+
+```{r}
+#| eval: false
+interpolate_model(mod, "BASE",
+                  sparse = TRUE,   # the storage knob: drop defaults, enable folding
+                  prune  = TRUE,
+                  fold   = c("region", "slice"))
+```
+
+. . .
+
+[GLPK / JuMP / Pyomo only]{.badge .limited} — folding writes an artificial set
+member (`ANYREGION`, `ANYSLICE`, …) into the model source, and the substitution
+is not GAMS-ready yet.
+
+## The cheapest reduction is a sampled calendar {.smaller}
+
+Keep the same time *structure*, solve a representative **subset** of its slices —
+here every fourth hour of each season, and `year_fraction` records what is
+covered:
+
+```{r}
+tt    <- calendars$utopia_s4h24@timetable
+keep  <- tt[grepl("h(00|04|08|12|16|20)$", tt$HOUR), ]
+cal_s <- newCalendar(name = "utopia_s4h24_sampled", timetable = keep,
+                     year_fraction = sum(keep$share))
+```
+
+```{r}
+#| echo: false
+scen_s <- interpolate_model(mod_u, "SAMPLED", cal_s, verbose = FALSE)
+sz <- function(s, lbl) {
+  m <- model_size(s, top_n = 1)
+  data.frame(scenario   = lbl,
+             calendar   = as.character(s@settings@calendar@name),
+             slices     = nrow(s@settings@calendar@timetable),
+             param_rows = format(m$param_rows, big.mark = ","),
+             variables  = format(m$n_var_est, big.mark = ","))
+}
+knitr::kable(rbind(sz(scen_u, "BASE"), sz(scen_s, "SAMPLED")), row.names = FALSE)
+```
+
+. . .
+
+A factor of roughly **4×** in rows and variables, from one substituted object.
+Reduce the *model* before reaching for storage tricks.
+
+## Sampling vs aggregation {.smaller}
+
+Two different things, and only one of them exists today:
+
+| | What it does | Status |
+|---|---|---|
+| **Sampling** | solve a *subset* of the calendar's slices; `year_fraction` scales annual quantities | works — substitute a sampled calendar |
+| **Aggregation** | roll a fine calendar's data *up* onto a coarser one — reweighting profiles, load curves, availability | [in development]{.badge .planned} |
+
+. . .
+
+Passing a structurally different, coarser calendar will build a smaller model,
+but the fine-resolution data is **not aggregated onto it** — that machinery is
+still being written, and lands with the **timescales** package. Until then,
+sampling is the supported way to shrink the time dimension of an existing model.
+
+Aggregation on the **results** side already works: `getData(timeframe = )`
+(Part 2).
+
+::: {.callout-tip}
+Whichever route you take, `compare_interp_settings()` and
+`compare_solve_settings()` rebuild the same model across a grid of
+`fold`/`sparse`/`prune` settings and check the **objective is invariant** — the
+check worth running before trusting a reduction.
+:::
+
+## Large datasets: in memory or on disk {.smaller}
+
+```{r}
+#| eval: false
+interpolate_model(mod, "BIG", ondisk = TRUE)   # parameters written to disk
+save_scenario(scen, path = "scenarios/BIG")    # scenario spilled to parquet
+load_scenario("scenarios/BIG")
+```
+
+- **`ondisk = TRUE`** writes each parameter to a `modInp/` folder instead of
+  holding it in `@data`.
+- **`save_scenario()`** stores data-frame slots as **parquet** (zstd by default)
+  and empties the in-memory slots; `isInMemory()` tells you which state an object
+  is in.
+
+::: {.callout-warning}
+## Two honest caveats
+`ondisk` reduces peak memory **during the build only** — everything is
+materialised back into RAM before the solver files are written.
+
+And `getData()` **collects eagerly**: the Arrow dataset is opened lazily, but
+filtering happens in R afterwards. There is no predicate push-down, so this is
+not larger-than-memory querying.
+:::
+
+## Trimming variables [planned]{.badge .planned} {.smaller}
+
+Everything above operates on **parameter rows**. Removing the *variables* and
+*equations* those rows would have gated is a different job — an equation-graph
+cascade: mark empty-domain variables, untrim the ones still referenced, drop the
+rest.
+
+That cascade lives in the sibling **multimod** package (`trim_model()`,
+`mark_empty_variables()`, `untrim_required_elements()`), and energyRt does not
+call it yet. A partial removal on the energyRt side would leave dangling
+variable references in the equations that read them — which is precisely why it
+is not attempted here.
+
+Integration with multimod is in progress and is the route by which this arrives.
+
+# 9 · Reading results {background-color="#f4f4f4"}
+
+## `getData()` — one accessor, many sources {.smaller}
+
+```{r}
+#| eval: false
+getData(scen,  name = "vTechAct")        # a solved scenario: results
+getData(mod,   name = "invcost")         # a model: raw input data, pre-interpolation
+getData(ECOA,  name = "ceff")            # a single object: its own slots
+getData(list(BASE = s1, CAP = s2))       # a named list: stacked, with a `scenario` column
+```
+
+Key arguments: `timeframe` and `geolevel` (aggregation, Parts 2–3), `merge`,
+`process`, `parameters`, `variables`, `drop.zeros`, `asTibble`.
+
+. . .
+
+The **named list** form is how many scenarios are compared — there is no need
+for a registry to hold them.
+
+## Mixes and comparisons {.smaller}
+
+::: {.columns}
+::: {.column width="48%"}
+```{r}
+#| eval: false
+autoplot(scen_u)              # generation / capacity mixes
+getMix(list(BASE = scen_u, SAMPLED = scen_s))
+```
+
+`getMix()` is the tidy extractor behind the scenario plot. Given a **named
+list** it row-binds with a `scenario` column, so any `ggplot2` comparison is a
+`facet_wrap(~ scenario)` away.
+
+`autoplot()` itself takes a single scenario — build multi-scenario charts from
+`getMix()`.
+:::
+::: {.column width="52%"}
+```{r}
+#| echo: false
+#| fig-width: 6.0
+#| fig-height: 4.6
+autoplot(scen_u)
+```
+:::
+:::
+
+## Levelized costs and reports {.smaller}
+
+```{r}
+#| eval: false
+lc <- levcost(scen_u, name = "ECOA")
+autoplot(lc, type = "components")   # also: npv, totals, frontier, input_frontier
+
+report(scen_u)                       # results overview -> HTML
+report(mod_u)                        # full model report: config, inventory, every technology
+report(ECOA, format = "pdf")         # a single technology datasheet
+```
+
+- `report()` works on a `technology`, `repository`, `model` or solved `scenario`.
+- Formats: `html`, `pdf`, `tex` — it downgrades to HTML with a warning if no
+  LaTeX engine is found.
+- **Templates are customisable**: pass the absolute path of your own `.Rmd` to
+  `template =`. The built-ins live in `inst/templates/`
+  (`report_generic`, `report_model`, `report_scenario`, `report_vehicle`).
+
+# 10 · How it is solved {background-color="#f4f4f4"}
+
+## One solution type today {.smaller}
+
+energyRt writes **one linear program over all milestone years and solves it
+once**: full **perfect foresight**. Every backend template contains a single
+solve statement.
+
+That is a modelling assumption, not an implementation detail — the model knows
+the whole future when it invests. It is the right default for a least-cost
+benchmark and the wrong one for studying myopic behaviour.
+
+::: {.callout-note}
+## Under development [planned]{.badge .planned}
+Myopic · myopic with a guide or target · isolated regional solves ·
+geo-aggregated solves · free/no-trade solves.
+
+Also listed alongside these: **coarse-time** solving, which needs the
+aggregation machinery described in Part 8 — in development.
+
+**Time-sampled** solving is the one you can already do today, by substituting a
+sampled calendar (Parts 2, 7 and 8).
+:::
+
+## Backends and solvers {.smaller}
+
+::: {.columns}
+::: {.column width="52%"}
+| Backend | Needs locally |
+|---|---|
+| **GLPK / MathProg** | `glpsol` (ships with Rtools) |
+| **Julia / JuMP** | Julia + HiGHS |
+| **Python / Pyomo** | Python + CBC/HiGHS |
+| **GAMS** | GAMS + a license |
+| **NEOS** | *nothing* — an email address |
+
+The same model object solves on any of them.
+:::
+::: {.column width="48%"}
+```{r}
+#| eval: false
+solver_options$glpk
+solver_options$julia_highs_barrier
+solver_options$neos_gams_cplex
+```
+
+26 presets ship with the package. NEOS submits the model as inlined text, so a
+CPLEX solve needs no local GAMS at all — subject to its academic/non-commercial
+terms and a ~16 MB job cap.
+
+Cross-solving one scenario on two backends and comparing objectives is the
+strongest correctness check available.
+:::
+:::
+
+# 11 · Methods at a glance {background-color="#f4f4f4"}
+
+## What you can call on what {.smaller}
+
+::: {.small-table}
+| Method | Returns | Defined for |
+|---|---|---|
+| `draw()` | grid schematic | `technology`, `storage`, `supply`, `demand`, `import`, `export`, `trade` |
+| `autoplot()` | **ggplot** | 19 classes — `calendar`, `horizon`, `commodity`, `weather`, `trade`, `demand`, the processes, `levcost`, `scenario`, `model`, `repository` |
+| `plot()` | ggplot | 17 classes — a thin delegate to `autoplot()` |
+| `getData()` | tidy data | scenarios (and lists of them), models, repositories, single objects |
+| `getObject()` | the objects | repository, model, scenario — filtered by class, name, region, … |
+| `report()` | html / pdf / tex | `technology`, `repository`, `model`, `scenario` |
+| `design()` | R code | `technology` [only]{.badge .limited} |
+| `summary()` / `show()` | console | `model`, `scenario`, `repository` [only]{.badge .limited} |
+:::
+
+. . .
+
+Two things worth knowing before you go looking: there is **no `draw()` for a
+model or repository** — `draw()` describes a process, and `report(mod)` is what
+describes a whole model. And a process `autoplot()` needs year-indexed data in
+the economics or capacity slots; with none it returns `NULL` and says so.
+
+## The workhorses {.smaller}
+
+::: {.columns}
+::: {.column width="50%"}
+**While building**
+
+- `draw(obj)` — is this the system I meant?
+- `design(tech)` — what does this object actually say?
+- `getObject(repo, class = "technology")` — what is in here?
+- `autoplot(cal)`, `autoplot(hor)` — is the time structure right?
+:::
+::: {.column width="50%"}
+**After solving**
+
+- `autoplot(scen)` — the mixes
+- `getMix(list(...))` — compare scenarios
+- `levcost(scen, name =)` — why did it pick that?
+- `model_size(scen)` — why is this so slow?
+- `report(scen)` — everything, in one document
+:::
+:::
+
+# 12 · Extending {background-color="#f4f4f4"}
+
+## Your own constraints {.smaller}
+
+The escape hatch that avoids forking the model code:
+
+```{r}
+#| eval: false
+newConstraint(
+  name  = "RES_SHARE",
+  eq    = ">=",
+  list(variable = "vTechOut", for.sum = list(tech = c("EWIN", "ESOL"))),
+  rhs   = data.frame(year = c(2030, 2050), rhs = c(0.3, 0.6))
+)
+```
+
+> *In many cases this can be done without writing constraints in the GAMS,
+> Julia/JuMP, Python/Pyomo, or GLPK-MathProg languages.*
+
+Each left-hand-side term is a **summand**: a `variable`, a multiplier `mult`, and
+what to sum it `for.sum` over.
+
+[experimental]{.badge .exp} — and user constraints currently compile to
+GAMS-dialect text; moving them to a language-neutral form so every backend
+renders from one definition is in progress.
+
+## The other extension points {.smaller}
+
+| Want to | Use |
+|---|---|
+| add a relationship between variables | `newConstraint()` [experimental]{.badge .exp} |
+| add a cost term to the objective | `newCosts()` [experimental]{.badge .exp} |
+| change what a report shows | `report(template = "/path/to/your.Rmd")` |
+| carry your own metadata on any object | the `@misc` slot — never read by the model |
+| change solver behaviour | `solver_options$...`, or `set_option()` / `en_config_write()` |
+| add a new mapping to the pipeline | the mapping registry — a *contributor* path: declare it in `modInp.yml`, write `map_<Name>()`, register it |
+
+. . .
+
+Not available yet: **`newVariable()`** [planned]{.badge .planned}. The variable
+catalogue is fixed; a runtime constructor paralleling `newConstraint()` is on the
+roadmap. (The `variable` class you can see is the results container, not a
+constructor.)
+
+# 13 · Where this is going {background-color="#f4f4f4"}
+
+## Roadmap {.smaller}
+
+::: {.columns}
+::: {.column width="50%"}
+**Structure**
+
+- Nested **regions** via `geoscales` and nested **time** via `timescales` —
+  today both are flat sets with aggregation only on the reporting side
+- `newVariable()`, to match `newConstraint()`
+- Language-neutral user constraints, rendered to every backend from one
+  definition
+- Physical properties on `commodity` (mass, volume, heating value)
+- Region swapping and scalar setting overrides in scenario definition
+:::
+::: {.column width="50%"}
+**Scale and solving**
+
+- Alternative solution types — myopic first
+- multimod integration: the variable/equation **trim** cascade, and one shared
+  model definition across packages
+- Lazy, push-down querying of on-disk results
+- Scenario **registry** — a working index over many saved scenarios
+  [experimental today]{.badge .exp}
+:::
+:::
+
+. . .
+
+Most of the packages around energyRt are pre-release. If a piece of this is on
+your critical path, say so — that is the most useful thing you can tell us.
+
+## Recap {.smaller}
+
+::: {.columns}
+::: {.column width="50%"}
+1. **Objects** describe the system — `new*()`, one grammar throughout
+2. **Calendars and horizons** decide where those objects live in time;
+   **regions and geoscales**, in space
+3. **Vintages and clusters** put many variants on one object
+4. **Interpolation** turns anchors into a full grid
+:::
+::: {.column width="50%"}
+5. **Scenarios** are the same model with objects substituted
+6. **Scale** is managed first by sampling the calendar, then by pruning, folding
+   and trimming its data
+7. **Results** come back tidy — `getData()`, `autoplot()`, `levcost()`,
+   `report()`
+:::
+:::
+
+. . .
+
+**When in doubt, `draw()` it** — and when the model is slow, `model_size()` it.

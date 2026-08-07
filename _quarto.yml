@@ -1,11 +1,19 @@
 project:
   type: book
-  # the slides are a separate revealjs render; ship the built deck with the book:
-  #   quarto render slides/intro.qmd   (1. build the deck)
-  #   quarto render                    (2. build the book; copies the deck in)
-  # resources:
-  #   - slides/intro.html
-  #   - slides/intro_files
+  # Slide decks are a SEPARATE revealjs render, shipped with the book as static
+  # resources. They are pre-rendered locally and committed, because they execute
+  # energyRt + a solver -- which the GitHub Pages workflow does not install.
+  #
+  #   quarto render slides/builders.qmd   (1. rebuild a deck, locally)
+  #   quarto render                       (2. build the book; copies decks in)
+  #
+  # `render` excludes slides/ so the site build never tries to execute them.
+  render:
+    - "*.qmd"
+    - "!slides/"
+  resources:
+    - slides/builders.html
+    - slides/builders_files/
 
 book:
   title: "Energy System Modeling with R"
@@ -16,9 +24,11 @@ book:
     - index.qmd
     - r-resources.qmd
     - installation.qmd
+    - part: "Build UTOPIA"
+      chapters:
+        - 01-first-model.qmd
     # - part: "Build UTOPIA"
       # chapters:
-        # - 01-first-model.qmd
         # - 02-commodities-supply-demand.qmd
         # - 03-technologies.qmd
         # - 04-time-and-storage.qmd
