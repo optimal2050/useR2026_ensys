@@ -6,10 +6,8 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="author" content="Oleg Lugovoy, et al.">
-<meta name="dcterms.date" content="2026-08-07">
 
-<title>Energy System Modeling with R</title>
+<title>1&nbsp; R: setup and resources – Energy System Modeling with R</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -28,6 +26,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -38,7 +71,8 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./r-resources.html" rel="next">
+<link href="./installation.html" rel="next">
+<link href="./index.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
@@ -113,7 +147,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./index.html">Preface</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./r-resources.html"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">R: setup and resources</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -127,13 +161,13 @@ ul.task-list li input[type="checkbox"] {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./index.html" class="sidebar-item-text sidebar-link active">
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Preface</span></a>
   </div>
 </li>
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./r-resources.html" class="sidebar-item-text sidebar-link">
+  <a href="./r-resources.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">R: setup and resources</span></span></a>
   </div>
 </li>
@@ -170,11 +204,11 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#preface" id="toc-preface" class="nav-link active" data-scroll-target="#preface">Preface</a>
-  <ul class="collapse">
-  <li><a href="#slides" id="toc-slides" class="nav-link" data-scroll-target="#slides">Slides</a></li>
-  <li><a href="#questions-and-discussion" id="toc-questions-and-discussion" class="nav-link" data-scroll-target="#questions-and-discussion">Questions and discussion</a></li>
-  </ul></li>
+  <li><a href="#install-r-and-an-ide" id="toc-install-r-and-an-ide" class="nav-link active" data-scroll-target="#install-r-and-an-ide"><span class="header-section-number">1.1</span> Install R and an IDE</a></li>
+  <li><a href="#learning-or-refreshing-r" id="toc-learning-or-refreshing-r" class="nav-link" data-scroll-target="#learning-or-refreshing-r"><span class="header-section-number">1.2</span> Learning (or refreshing) R</a></li>
+  <li><a href="#key-packages-to-check-first" id="toc-key-packages-to-check-first" class="nav-link" data-scroll-target="#key-packages-to-check-first"><span class="header-section-number">1.3</span> Key packages to check first</a></li>
+  <li><a href="#cheatsheets" id="toc-cheatsheets" class="nav-link" data-scroll-target="#cheatsheets"><span class="header-section-number">1.4</span> Cheatsheets</a></li>
+  <li><a href="#getting-help" id="toc-getting-help" class="nav-link" data-scroll-target="#getting-help"><span class="header-section-number">1.5</span> Getting help</a></li>
   </ul>
 </nav>
     </div>
@@ -183,27 +217,14 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Energy System Modeling with R</h1>
-<p class="subtitle lead">A post-conference online series following useR! 2026</p>
+<h1 class="title"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">R: setup and resources</span></h1>
 </div>
 
 
 
 <div class="quarto-title-meta">
 
-    <div>
-    <div class="quarto-title-meta-heading">Author</div>
-    <div class="quarto-title-meta-contents">
-             <p>Oleg Lugovoy, et al. </p>
-          </div>
-  </div>
     
-    <div>
-    <div class="quarto-title-meta-heading">Published</div>
-    <div class="quarto-title-meta-contents">
-      <p class="date">August 7, 2026</p>
-    </div>
-  </div>
   
     
   </div>
@@ -213,73 +234,103 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="preface" class="level1 unnumbered">
-<h1 class="unnumbered">Preface</h1>
-<p>This training introduces energy system modeling in R with the <a href="https://github.com/optimal2050/energyRt">energyRt</a> package — energy system modeling with a familiar R workflow: you describe the system as R objects, energyRt compiles and solves the optimization model on one of several mathematical-programming <strong>backends</strong> (GLPK, Julia/JuMP, Python/Pyomo, or GAMS), and results come back as tidy tables.</p>
-<p>New to R, or returning after a while? <a href="./r-resources.html">R: setup and resources</a> collects the essentials — where to get R and an IDE, a couple of short introductions, the packages worth having before we start, and the cheatsheets to keep open during the sessions.</p>
-<p>The <a href="./installation.html">Installation</a> chapter then walks through installing the energyRt package and at least one solver backend, so your machine is ready for the hands-on sessions.</p>
-<p>Once you are set up, <a href="./01-first-model.html">Your first energy model</a> starts from the smallest model that can exist — so small it does not work — and grows it one object at a time until it burns coal and emits CO<sub>2</sub>. One region, one year, one time slice: nothing competing for attention with the energy balance itself.</p>
-<section id="slides" class="level2">
-<h2 class="anchored" data-anchor-id="slides">Slides</h2>
-<p><strong><a href="slides/builders.html">Building blocks of an energyRt model »</a></strong></p>
-<p>A reference deck covering the <code>new*()</code> constructors and the system around them: where objects live in time (calendars, horizons) and space (regions, geoscales), commodities in depth, vintages and clusters, how a description becomes numbers, how scenarios are composed, what to do about large models, and how results are read. Every diagram in it is generated by the package itself.</p>
-<p>It is used in the sessions and written to be browsable afterwards — features that are experimental or still in development are marked as such, so it doubles as an honest map of where the project currently stands.</p>
-</section>
-<section id="questions-and-discussion" class="level2">
-<h2 class="anchored" data-anchor-id="questions-and-discussion">Questions and discussion</h2>
-<p>Questions between sessions are welcome — and best asked in the open, where the answer helps everyone else too.</p>
-<p><strong>Ask here:</strong> <a href="https://mstdn.science/@optimal2050/117049007107822486">the course Q&amp;A thread on Mastodon</a></p>
-<p>Reply to that post with anything: an install that will not cooperate, a modeling question, a result you cannot explain, or something you built and want to show. Beginner questions are explicitly welcome — that is what the thread is for.</p>
+<p>This chapter is for getting <strong>R itself</strong> ready and, if you need it, for brushing up on the language. Everything energyRt-specific — the package, the solver backends — is in the next chapter, <a href="./installation.html">Installation</a>.</p>
+<p>You do not need to be an experienced R user to follow the series. Familiarity helps, but the sessions explain the modeling ideas as they go, and you are welcome to attend simply to watch.</p>
+<section id="install-r-and-an-ide" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="install-r-and-an-ide"><span class="header-section-number">1.1</span> Install R and an IDE</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>What</th>
+<th>Where</th>
+<th>Needed?</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>R</strong> (≥ 4.3)</td>
+<td><a href="https://cloud.r-project.org/" class="uri">https://cloud.r-project.org/</a></td>
+<td>Required</td>
+</tr>
+<tr class="even">
+<td><strong>RStudio Desktop</strong> — the IDE we use in the sessions</td>
+<td><a href="https://posit.co/downloads" class="uri">https://posit.co/downloads</a></td>
+<td>Strongly recommended</td>
+</tr>
+<tr class="odd">
+<td><strong>Quarto</strong> — publishing system for reports and slides</td>
+<td><a href="https://quarto.org/" class="uri">https://quarto.org/</a></td>
+<td>Optional</td>
+</tr>
+</tbody>
+</table>
+<p>Install R <strong>first</strong>, then RStudio: RStudio is a front end and looks for an existing R installation when it starts.</p>
+<p>Recent versions of RStudio bundle Quarto, so a separate install is usually unnecessary — it is listed here because Quarto is worth knowing about in its own right, and the course materials are written in it.</p>
 <div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-<span class="screen-reader-only">Note</span>No Mastodon account? It takes about a minute
-</div>
-<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
-</div>
-<div id="callout-1" class="callout-1-contents callout-collapse collapse">
-<div class="callout-body-container callout-body">
-<p>Mastodon is a decentralized network: you register on any one server and can follow, reply to, and interact with people on all the others. If you have no preference, <a href="https://mastodon.social/"><strong>mastodon.social</strong></a> is the largest general server and a fine default — sign up there and you can reply to the thread straight away.</p>
-<p>Two things that trip people up when they arrive:</p>
-<ul>
-<li>To find us from your own server, search for the <strong>full handle</strong> <code>@optimal2050@mstdn.science</code> — not just <code>optimal2050</code>, which only searches your own server.</li>
-<li>Follow <a href="https://mstdn.science/@optimal2050"><strong><span class="citation" data-cites="optimal2050">@optimal2050</span><span class="citation" data-cites="mstdn.science">@mstdn.science</span></strong></a> rather than relying on the hashtag. Hashtag timelines only show posts your server has already seen, so following the account is what reliably brings the updates to you.</li>
-</ul>
-<p>Tag your own posts about the course with <strong>#optimal2050</strong> so others can find them.</p>
-</div>
-</div>
-</div>
-<!-- The rest of the tutorial is hands-on, in two parts. **Build UTOPIA** -->
-<!-- (@sec-first-model – @sec-utopia): solve a first tiny model end to end, then -->
-<!-- grow the classic UTOPIA electricity model brick by brick — commodities, supply -->
-<!-- and demand, technologies in depth (with levelized costs and reports), time -->
-<!-- slices, weather and storage — until it assembles into the exact model that -->
-<!-- ships with energyRt as the `utopia_modules` kit. **Use UTOPIA** -->
-<!-- (@sec-scenarios): run policy scenarios (CO~2~ cap, carbon tax, renewable -->
-<!-- share, nuclear moratorium) and compare them. Each chapter ends with exercises; -->
-<!-- worked solutions are folded underneath. -->
-<!-- The [intro slides](slides/intro.html) give the 10-minute framing (what an -->
-<!-- energy-system model is, and how the day is structured); the mechanics live here -->
-<!-- in the tutorial. -->
-<div class="callout callout-style-default callout-tip callout-titled">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
 <div class="callout-title-container flex-fill">
-Tip
+<span class="screen-reader-only">Note</span>Windows: you also want Rtools
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>The installation chapter shows every command but does <strong>not</strong> run any of them at render time — copy each command into your own R session to execute it.</p>
+<p>energyRt is installed from source, which needs a compiler toolchain. On Windows that is <a href="https://cran.r-project.org/bin/windows/Rtools/">Rtools</a> — install the version matching your R (Rtools 4.5 for R 4.5.x). A useful side effect: Rtools ships the GLPK solver we use in the training, so installing it covers two requirements at once. See <a href="./installation.html">Installation</a>.</p>
 </div>
 </div>
-
-
 </section>
+<section id="learning-or-refreshing-r" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="learning-or-refreshing-r"><span class="header-section-number">1.2</span> Learning (or refreshing) R</h2>
+<p>Many good introductions exist; these are a few short ones that get you to a working knowledge quickly. Pick one — they cover much the same ground.</p>
+<ul>
+<li><a href="https://intro2r.com/"><strong>Introduction to R</strong></a> — a gentle, complete beginner’s book: installing, data structures, plotting, basic programming.</li>
+<li><a href="https://faculty.washington.edu/otoomet/info201-book/r-intro.html"><strong>R intro (Otoomet, INFO 201)</strong></a> — compact and fast-moving; good if you program already and just want R’s idioms.</li>
+<li><a href="https://r4ds.hadley.nz/"><strong>R for Data Science (2e)</strong></a> — the standard reference for the tidyverse workflow that energyRt’s data handling follows.</li>
+<li><a href="https://rstudio-education.github.io/hopr/"><strong>Hands-On Programming with R</strong></a> — focuses on the language itself (objects, functions, environments) rather than data analysis.</li>
+<li><a href="https://swirlstats.com/"><strong>swirl</strong></a> — learn interactively inside the R console, if you prefer doing to reading.</li>
+</ul>
+<p>Time is short before the first session — the highest-return preparation is being comfortable with data frames, <code>|&gt;</code> pipes, and subsetting. Everything else you can pick up as we go.</p>
+</section>
+<section id="key-packages-to-check-first" class="level2" data-number="1.3">
+<h2 data-number="1.3" class="anchored" data-anchor-id="key-packages-to-check-first"><span class="header-section-number">1.3</span> Key packages to check first</h2>
+<p>Install these before Session 1 and confirm they load. They are the ones most likely to need a compiler or a system library, so finding a problem now rather than mid-session is worth the few minutes:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">install.packages</span>(<span class="fu">c</span>(<span class="st">"dplyr"</span>, <span class="st">"ggplot2"</span>, <span class="st">"sf"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)     <span class="co"># data manipulation — the verbs energyRt returns results for</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)   <span class="co"># plots</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(sf)        <span class="co"># spatial data and maps</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<ul>
+<li><strong>dplyr</strong> — results come back from energyRt as tidy tables; <code>filter()</code>, <code>group_by()</code>, <code>summarise()</code> are how you work with them.</li>
+<li><strong>ggplot2</strong> — used throughout for charts of capacity, dispatch, and costs.</li>
+<li><strong>sf</strong> — spatial features, for models with regions and maps. It is the one most likely to complain, since it links to the GDAL/GEOS/PROJ system libraries. On Windows and macOS the CRAN binary includes them; on Linux install <code>libgdal-dev libgeos-dev libproj-dev</code> (or your distribution’s equivalents) first.</li>
+</ul>
+<p>If <code>library(sf)</code> fails, it will not block you from the modeling parts of the course — only from the mapping examples.</p>
+</section>
+<section id="cheatsheets" class="level2" data-number="1.4">
+<h2 data-number="1.4" class="anchored" data-anchor-id="cheatsheets"><span class="header-section-number">1.4</span> Cheatsheets</h2>
+<p>Posit maintains one-page reference cards for most of the tools we use. Printing or bookmarking a few is the single most useful thing you can do before the sessions:</p>
+<p><strong><a href="https://opensource.posit.co/resources/cheatsheets/" class="uri">https://opensource.posit.co/resources/cheatsheets/</a></strong></p>
+<p>Worth having open during the course:</p>
+<ul>
+<li><strong>Data transformation with dplyr</strong> — the verbs, joins, and grouping</li>
+<li><strong>Data visualization with ggplot2</strong> — geoms, scales, facets</li>
+<li><strong>RStudio IDE</strong> — panes, shortcuts, projects</li>
+<li><strong>R Markdown</strong> and <strong>Quarto</strong> — for writing up your own results</li>
+<li><strong>sf / Simple Features</strong> — if you get to the spatial examples</li>
+</ul>
+</section>
+<section id="getting-help" class="level2" data-number="1.5">
+<h2 data-number="1.5" class="anchored" data-anchor-id="getting-help"><span class="header-section-number">1.5</span> Getting help</h2>
+<ul>
+<li><code>?function_name</code> in the console opens R’s own documentation — always the fastest first stop.</li>
+<li>Bring anything unresolved to the <a href="./index.html#questions-and-discussion">course Q&amp;A thread</a> — it is there precisely for this, and beginner questions are welcome.</li>
+</ul>
+
+
 </section>
 
 </main> <!-- /main -->
@@ -685,10 +736,13 @@ Tip
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
+      <a href="./index.html" class="pagination-link" aria-label="Preface">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text">Preface</span>
+      </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./r-resources.html" class="pagination-link" aria-label="R: setup and resources">
-        <span class="nav-page-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">R: setup and resources</span></span> <i class="bi bi-arrow-right-short"></i>
+      <a href="./installation.html" class="pagination-link" aria-label="Installing energyRt">
+        <span class="nav-page-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Installing energyRt</span></span> <i class="bi bi-arrow-right-short"></i>
       </a>
   </div>
 </nav>
