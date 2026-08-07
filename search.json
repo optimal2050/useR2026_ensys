@@ -216,7 +216,7 @@
     "section": "",
     "text": "3.1 Hello world: a demand and nothing else\nWe start with the smallest model that can exist — so small it does not work — and grow it one object at a time until it burns coal and emits CO2. Every step is a few lines of R, and every step you can solve and look at.\nTo keep the arithmetic in your head, the whole chapter uses:\nTime slices and multiple years arrive in a later session; here nothing competes for attention with the energy balance itself.\nAn energy system model is, at heart, a balance: everything consumed must come from somewhere. So let us declare only the consumption — electricity, and a demand for 50 PJ of it a year — and see what happens.\nELC &lt;- newCommodity(\n  name      = \"ELC\",\n  desc      = \"Electricity\",\n  unit      = \"PJ\",\n  timeframe = \"ANNUAL\"\n)\n\nDEM_ELC &lt;- newDemand(\n  name      = \"DEM_ELC\",\n  desc      = \"Electricity demand\",\n  commodity = \"ELC\",\n  unit      = \"PJ\",\n  demand    = data.frame(demand = 50)      # 50 PJ a year\n)\n\nrepo_EMPTY &lt;- newRepository(\"repo_EMPTY\", ELC, DEM_ELC)\n\nmod_EMPTY &lt;- newModel(\n  name    = \"HELLO\",\n  desc    = \"A demand and nothing to serve it\",\n  data    = repo_EMPTY,\n  region  = \"R1\",\n  horizon = newHorizon(period = 2025, intervals = 1)\n)\nNow build the scenario. energyRt assembles it, but warns you first:\nscen_EMPTY &lt;- interpolate_model(mod_EMPTY, name = \"EMPTY\")\nIt is a warning, not an error: the scenario is built, and you can send it to the solver and see for yourself. There is no solution to read back, so tell solve_scenario() not to look for one:\nsolve_scenario(scen_EMPTY, read.solution = FALSE)\nThe solver’s own verdict is the last line of its log:\nThis is the first lesson, and it is worth more than it looks. The model is not wrong, it is infeasible: no combination of decisions satisfies the constraints, because one constraint says “deliver 50 PJ of ELC in R1” and nothing in the model can produce a single joule. Note how small it is — 7 rows and 5 columns. Everything you write in energyRt ends up as a matrix like this one, just larger.",
     "crumbs": [
-      "Build UTOPIA",
+      "Exercises",
       "<span class='chapter-number'>3</span>  <span class='chapter-title'>Your first energy model</span>"
     ]
   },
@@ -227,7 +227,7 @@
     "section": "",
     "text": "Warning: There is no supply, production, interregional trade, or import for\ndemand-commodities in regions:\n     comm region\n   1  ELC     R1\nThe model will be infeasible unless these commodities are supplied.\n\n\n\nGLPK Simplex Optimizer 5.0\n7 rows, 5 columns, 10 non-zeros\nPreprocessing...\nPROBLEM HAS NO PRIMAL FEASIBLE SOLUTION\n\n\n\n\n\n\n\nNote\n\n\n\nInfeasibility is a normal result, not a crash. As models grow, most of the problems you meet will be infeasibilities — a demand nothing can serve, a capacity bound that is too tight, a policy constraint that contradicts another. The skill is reading them.\nenergyRt warns rather than refusing to build, so you can always inspect an incomplete model and hand it to the solver. If you would rather it stop at the first such finding, set options(en.model_checks_stop = TRUE).",
     "crumbs": [
-      "Build UTOPIA",
+      "Exercises",
       "<span class='chapter-number'>3</span>  <span class='chapter-title'>Your first energy model</span>"
     ]
   },
@@ -238,7 +238,7 @@
     "section": "3.2 Technically speaking, it is a model",
     "text": "3.2 Technically speaking, it is a model\n\n\n\n\n\nThe cheapest fix is to buy the electricity from somewhere else. newImport() brings a commodity in from outside the model — the rest of the world — at a price:\n\nIMP_ELC &lt;- newImport(\n  name      = \"IMP_ELC\",\n  desc      = \"Electricity import from the rest of the world\",\n  commodity = \"ELC\",\n  unit      = \"PJ\",\n  import    = data.frame(price = 30)       # MEUR/PJ\n)\n\ndraw(IMP_ELC)\n\nAdd it to the model and solve:\n\nrepo_IMPORT &lt;- newRepository(\"repo_IMPORT\", ELC, DEM_ELC, IMP_ELC)\n\nmod_IMPORT &lt;- newModel(\n  name    = \"HELLO\",\n  desc    = \"Demand served by imported electricity\",\n  data    = repo_IMPORT,\n  region  = \"R1\",\n  horizon = newHorizon(period = 2025, intervals = 1)\n)\n\nscen_IMPORT &lt;- interpolate_model(mod_IMPORT, name = \"IMPORT\") |&gt;\n  solve_scenario()\n\ngetData(scen_IMPORT, \"vObjective\", merge = TRUE)   # total cost, MEUR\ngetData(scen_IMPORT, \"vImportRow\", merge = TRUE)   # imported ELC, PJ\n\nThat is a working energy system model. It imports 50 PJ and pays 50 × 30 = 1500 MEUR. Trivial arithmetic — which is the point: you can check the optimizer by hand, so you know the machinery is doing what you think.\nTechnically it is complete: a demand, a source, and a balance holding them together. Everything else in this workshop is more of the same, with more objects.",
     "crumbs": [
-      "Build UTOPIA",
+      "Exercises",
       "<span class='chapter-number'>3</span>  <span class='chapter-title'>Your first energy model</span>"
     ]
   },
@@ -249,7 +249,7 @@
     "section": "3.3 Primary energy supply",
     "text": "3.3 Primary energy supply\n\n\n\n\n\nBuying electricity is a poor deal. Let us produce it instead — from coal. That takes two new objects. First the fuel itself: a commodity, and a supply that makes it available at a price.\n\nCOA &lt;- newCommodity(\n  name      = \"COA\",\n  desc      = \"Coal\",\n  unit      = \"PJ\",\n  timeframe = \"ANNUAL\"\n)\n\nSUP_COA &lt;- newSupply(\n  name      = \"SUP_COA\",\n  desc      = \"Coal supply\",\n  commodity = \"COA\",\n  unit      = \"PJ\",\n  supply    = data.frame(cost = 2.5)       # MEUR/PJ\n)\n\ndraw(SUP_COA)",
     "crumbs": [
-      "Build UTOPIA",
+      "Exercises",
       "<span class='chapter-number'>3</span>  <span class='chapter-title'>Your first energy model</span>"
     ]
   },
@@ -260,7 +260,7 @@
     "section": "3.4 Technology",
     "text": "3.4 Technology\nSecond, something that turns coal into electricity. A technology is energyRt’s converter: it takes input commodities, produces output commodities, and has a capacity that must be built and paid for.\n\nECOA &lt;- newTechnology(\n  name    = \"ECOA\",\n  desc    = \"Coal-fired power plant\",\n  input   = list(comm = \"COA\", unit = \"PJ\", combustion = 1),\n  output  = list(comm = \"ELC\", unit = \"PJ\"),\n  units   = list(\n    capacity = \"GW\",                       # capacity variables\n    activity = \"PJ\",                       # activity (output) variables\n    costs    = \"MEUR\"                      # currency of every cost parameter\n  ),\n  ceff    = data.frame(\n    comm     = \"COA\",\n    cinp2use = 0.40                        # 40% efficient\n  ),\n  invcost = list(invcost = 2000),          # MEUR/GW\n  fixom   = 55,                            # MEUR/GW per year\n  cap2act = 31.536,                        # PJ per GW per year\n  olife   = 30L                            # operational life, years\n)\n\ndraw(ECOA)\n\ndraw() sketches any process as a flow diagram — coal in on the left, electricity out on the right. Use it whenever you are unsure what you actually built.",
     "crumbs": [
-      "Build UTOPIA",
+      "Exercises",
       "<span class='chapter-number'>3</span>  <span class='chapter-title'>Your first energy model</span>"
     ]
   },
@@ -271,7 +271,7 @@
     "section": "3.5 Complete model",
     "text": "3.5 Complete model\n\n\n\n\n\nNow put the whole thing together. Note that IMP_ELC stays in the model: the import does not disappear, it simply has to compete.\n\nrepo_COAL &lt;- newRepository(\"repo_COAL\",\n                           ELC, COA, DEM_ELC, IMP_ELC, SUP_COA, ECOA)\n\nmod_COAL &lt;- newModel(\n  name    = \"HELLO\",\n  desc    = \"Coal plant competing against imported electricity\",\n  data    = repo_COAL,\n  region  = \"R1\",\n  horizon = newHorizon(period = 2025, intervals = 1)\n)\n\nscen_COAL &lt;- interpolate_model(mod_COAL, name = \"COAL\") |&gt;\n  solve_scenario(echo = FALSE)\n\ngetData(scen_COAL, \"vObjective\",  merge = TRUE)   # total cost, MEUR\ngetData(scen_COAL, \"vTechCap\",    merge = TRUE)   # capacity built, GW\ngetData(scen_COAL, \"vTechInp\",    merge = TRUE)   # coal burned, PJ\ngetData(scen_COAL, \"vImportRow\",  merge = TRUE)   # electricity imported, PJ\n\nThe model builds 1.585 GW of coal capacity — exactly enough to make 50 PJ at cap2act = 31.536 — burns 125 PJ of coal (50 ÷ 0.40), and imports nothing. Total cost falls from 1500 to 505 MEUR.\nNobody told the model to prefer coal. It compared building a plant and buying fuel against paying 30 MEUR/PJ at the border, and the plant won. That comparison is the model.",
     "crumbs": [
-      "Build UTOPIA",
+      "Exercises",
       "<span class='chapter-number'>3</span>  <span class='chapter-title'>Your first energy model</span>"
     ]
   },
@@ -282,7 +282,7 @@
     "section": "3.6 Account emissions",
     "text": "3.6 Account emissions\n\n\n\n\n\nA coal plant that burns 125 PJ a year and emits nothing is not a model of anything real. Emissions attach to the fuel: burning a joule of coal releases CO2 regardless of which plant burns it, so the factor belongs on the commodity, not on the technology.\n\nCO2 &lt;- newCommodity(\n  name      = \"CO2\",\n  desc      = \"Carbon dioxide\",\n  unit      = \"kt\",\n  timeframe = \"ANNUAL\"\n)\n\nCOA &lt;- newCommodity(\n  name      = \"COA\",\n  desc      = \"Coal\",\n  unit      = \"PJ\",\n  timeframe = \"ANNUAL\",\n  emis      = data.frame(\n    comm = \"CO2\",\n    unit = \"kt/PJ\",\n    emis = 95                              # 95 kt of CO2 per PJ of coal\n  )\n)\n\nThe link that makes it work is combustion = 1 on the technology’s input, which we already set on ECOA: it declares that the coal is burned rather than merely consumed. Rebuild and solve:\n\nrepo_EMIS &lt;- newRepository(\"repo_EMIS\",\n                           ELC, COA, CO2, DEM_ELC, IMP_ELC, SUP_COA, ECOA)\n\nmod_EMIS &lt;- newModel(\n  name    = \"HELLO\",\n  desc    = \"Coal plant with CO2 emissions\",\n  data    = repo_EMIS,\n  region  = \"R1\",\n  horizon = newHorizon(period = 2025, intervals = 1)\n)\n\nscen_EMIS &lt;- interpolate_model(mod_EMIS, name = \"EMIS\") |&gt;\n  solve_scenario(echo = FALSE)\n\ngetData(scen_EMIS, \"vTechEmsFuel\", merge = TRUE)   # CO2 emitted, kt\ngetData(scen_EMIS, \"vObjective\",   merge = TRUE)   # total cost, MEUR\n\n125 PJ × 95 kt/PJ = 11 875 kt of CO2 a year.\nNotice that the cost did not move: 505 MEUR, exactly as before. The model now measures emissions but nothing makes them expensive or limits them, so they change no decision. Attaching a price or a cap to CO2 — and watching the answer change — is what the scenarios session is about.",
     "crumbs": [
-      "Build UTOPIA",
+      "Exercises",
       "<span class='chapter-number'>3</span>  <span class='chapter-title'>Your first energy model</span>"
     ]
   },
@@ -293,7 +293,7 @@
     "section": "3.7 What you built",
     "text": "3.7 What you built\nFive object types, and you have met all of them:\n\n\n\nObject\nRole\nHere\n\n\n\n\nnewCommodity()\nsomething that flows\nELC, COA, CO2\n\n\nnewDemand()\nconsumption to be served\nDEM_ELC\n\n\nnewImport()\na flow from outside the model\nIMP_ELC\n\n\nnewSupply()\na domestic resource, at a price\nSUP_COA\n\n\nnewTechnology()\nconverts commodities\nECOA\n\n\n\nand three verbs: newModel() to assemble, interpolate_model() to expand the description over regions/years/slices, solve_scenario() to solve and read the answer back.",
     "crumbs": [
-      "Build UTOPIA",
+      "Exercises",
       "<span class='chapter-number'>3</span>  <span class='chapter-title'>Your first energy model</span>"
     ]
   },
@@ -304,7 +304,7 @@
     "section": "3.8 Exercises",
     "text": "3.8 Exercises\n1.1 — Where is the tipping point? The import costs 30 MEUR/PJ and coal wins easily. Lower the import price until the model stops building the plant and imports instead. Before running: do you expect the switch to be gradual or sudden?\n\n\n\n\n\n\nTipSolution 1.1\n\n\n\n\n\n\nsolve_at_price &lt;- function(p) {\n  imp &lt;- newImport(\n    name      = \"IMP_ELC\",\n    commodity = \"ELC\",\n    unit      = \"PJ\",\n    import    = data.frame(price = p)\n  )\n  # CO2 must travel with COA now: the commodity carries an emission factor\n  # that refers to it, and every referenced commodity must be in the model.\n  repo_p &lt;- newRepository(\"repo_p\", ELC, COA, CO2, DEM_ELC, imp,\n                          SUP_COA, ECOA)\n\n  mod_p &lt;- newModel(\n    name    = \"HELLO\",\n    data    = repo_p,\n    region  = \"R1\",\n    horizon = newHorizon(period = 2025, intervals = 1)\n  )\n  scen_p &lt;- interpolate_model(mod_p, name = paste0(\"P\", p)) |&gt;\n    solve_scenario(echo = FALSE)\n  cap &lt;- getData(scen_p, \"vTechCap\", merge = TRUE)$value\n  data.frame(price = p, capacity = if (length(cap)) cap else 0)\n}\n\ndo.call(rbind, lapply(c(30, 20, 15, 12, 10, 8), solve_at_price))\n\nThe switch is sudden. A linear program has no middle ground here: below the break-even price importing is cheaper for every joule, so capacity drops straight to zero rather than easing down.\n\n\n\n1.2 — A cleaner, dearer plant. Add a gas plant EGAS alongside ECOA: 58% efficient, invcost 900 MEUR/GW, fixom 25, olife 25, burning GAS supplied at 6.0 MEUR/PJ with an emission factor of 56 kt/PJ. Which plant does the model build, and what happens to CO2?\n\n\n\n\n\n\nTipSolution 1.2\n\n\n\n\n\n\nGAS &lt;- newCommodity(\n  name      = \"GAS\",\n  desc      = \"Natural gas\",\n  unit      = \"PJ\",\n  timeframe = \"ANNUAL\",\n  emis      = data.frame(comm = \"CO2\", unit = \"kt/PJ\", emis = 56)\n)\n\nSUP_GAS &lt;- newSupply(\n  name      = \"SUP_GAS\",\n  desc      = \"Natural gas supply\",\n  commodity = \"GAS\",\n  unit      = \"PJ\",\n  supply    = data.frame(cost = 6.0)\n)\n\nEGAS &lt;- newTechnology(\n  name    = \"EGAS\",\n  desc    = \"Gas-fired power plant\",\n  input   = list(comm = \"GAS\", unit = \"PJ\", combustion = 1),\n  output  = list(comm = \"ELC\", unit = \"PJ\"),\n  ceff    = data.frame(comm = \"GAS\", cinp2use = 0.58),\n  invcost = list(invcost = 900),\n  fixom   = 25,\n  cap2act = 31.536,\n  olife   = 25L\n)\n\nrepo_GAS &lt;- newRepository(\"repo_GAS\",\n                          ELC, COA, GAS, CO2, DEM_ELC, IMP_ELC,\n                          SUP_COA, SUP_GAS, ECOA, EGAS)\n\nmod_GAS &lt;- newModel(\n  name    = \"HELLO\",\n  data    = repo_GAS,\n  region  = \"R1\",\n  horizon = newHorizon(period = 2025, intervals = 1)\n)\n\nscen_GAS &lt;- interpolate_model(mod_GAS, name = \"GAS\") |&gt;\n  solve_scenario(echo = FALSE)\n\ngetData(scen_GAS, \"vTechCap\",     merge = TRUE)\ngetData(scen_GAS, \"vTechEmsFuel\", merge = TRUE)\ngetData(scen_GAS, \"vObjective\",   merge = TRUE)\n\nNothing changes. The model still builds 1.59 GW of ECOA, still emits 11 875 kt, and the objective stays at 505 MEUR — EGAS is never built.\nGas is cheaper to build (900 against 2000 MEUR/GW) and far more efficient (58% against 40%), but fuel decides it. Per PJ of electricity, coal costs 2.5 ÷ 0.40 = 6.25 MEUR and gas costs 6.0 ÷ 0.58 = 10.3 MEUR. That gap is wider than everything the cheaper plant saves, so the better technology loses on the price of what it burns.\nTwo things worth taking from this. First, an optimization model will not build something merely because it is better — only because it is cheaper under the numbers you gave it. Second, CO2 follows the fuel choice and nothing else: gas emits 56 kt/PJ against coal’s 95, but nothing in this model prices carbon, so that advantage buys it exactly nothing. Put a price on CO2 — as we will in a later session — and the ranking can flip.\nTry it now: lower the gas price until EGAS appears, the way you found the import tipping point in 1.1.",
     "crumbs": [
-      "Build UTOPIA",
+      "Exercises",
       "<span class='chapter-number'>3</span>  <span class='chapter-title'>Your first energy model</span>"
     ]
   }
