@@ -24,26 +24,27 @@ book:
     - index.qmd
     - r-resources.qmd
     - installation.qmd
-    - part: "Build UTOPIA"
+    - part: "Exercises"
       chapters:
         - 01-first-model.qmd
-    # - part: "Build UTOPIA"
-      # chapters:
         # - 02-commodities-supply-demand.qmd
         # - 03-technologies.qmd
         # - 04-time-and-storage.qmd
         # - 05-utopia.qmd
-    # - part: "Use UTOPIA"
-      # chapters:
         # - 06-scenarios.qmd
         # - 07-energy-rhapsody.qmd
   navbar:
     search: true
     collapse: true
     right:
+      - text: "Course info & registration"
+        href: https://energyRt.org/use-R-2026
+      - icon: mastodon
+        href: https://mstdn.science/@optimal2050
+        aria-label: optimal2050 on Mastodon
       - icon: github
-        href: https://github.com/optimal2050/energyRt
-        aria-label: energyRt on GitHub
+        href: https://github.com/optimal2050/useR2026_ensys
+        aria-label: Course materials on GitHub
 
 # Never execute installation/solver code while rendering the site.
 execute:
