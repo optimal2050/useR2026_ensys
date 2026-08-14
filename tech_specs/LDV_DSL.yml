@@ -1,0 +1,128 @@
+techspec: 1
+class: technology
+name: LDV_DSL
+desc: Diesel Light Duty Vehicle
+units:
+  capacity: 1000 Vehicles
+  use: GWh
+  activity: million km, city
+  costs: MUSD
+cap2act: 12.1
+inputs:
+- comm: DSL
+  unit: GWh
+outputs:
+- comm: PLDVHWY
+  unit: MPKm
+  group: o
+- comm: PLDVCTY
+  unit: MPKm
+  group: o
+aux:
+- acomm: PETRO_REFUEL
+  unit: GWh
+efficiency:
+- comm: DSL
+  cinp2use: 1.0
+- vintage: '2025'
+  comm: PLDVHWY
+  use2cact: 2.217073
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2025'
+  comm: PLDVCTY
+  use2cact: 1.642276
+  cact2cout: 3.18
+  share.up: 0.75
+- vintage: '2030'
+  comm: PLDVHWY
+  use2cact: 2.309451
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2030'
+  comm: PLDVCTY
+  use2cact: 1.710705
+  cact2cout: 3.18
+  share.up: 0.75
+- vintage: '2035'
+  comm: PLDVHWY
+  use2cact: 2.405678
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2035'
+  comm: PLDVCTY
+  use2cact: 1.781984
+  cact2cout: 3.18
+  share.up: 0.75
+- vintage: '2040'
+  comm: PLDVHWY
+  use2cact: 2.505915
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2040'
+  comm: PLDVCTY
+  use2cact: 1.856233
+  cact2cout: 3.18
+  share.up: 0.75
+- vintage: '2045'
+  comm: PLDVHWY
+  use2cact: 2.610328
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2045'
+  comm: PLDVCTY
+  use2cact: 1.933576
+  cact2cout: 3.18
+  share.up: 0.75
+- vintage: '2050'
+  comm: PLDVHWY
+  use2cact: 2.719092
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2050'
+  comm: PLDVCTY
+  use2cact: 2.014142
+  cact2cout: 3.18
+  share.up: 0.75
+aux_efficiency:
+- acomm: PETRO_REFUEL
+  comm: DSL
+  cinp2ainp: 1.0
+invcost:
+- vintage: '2025'
+  invcost: 11.578
+- vintage: '2030'
+  invcost: 11.578
+- vintage: '2035'
+  invcost: 11.578
+- vintage: '2040'
+  invcost: 11.578
+- vintage: '2045'
+  invcost: 11.578
+- vintage: '2050'
+  invcost: 11.578
+fixom:
+- fixom: 0.017
+vintages:
+- vintage: '2025'
+  olife: 15
+- vintage: '2030'
+  olife: 15
+- vintage: '2035'
+  olife: 15
+- vintage: '2040'
+  olife: 15
+- vintage: '2045'
+  olife: 15
+- vintage: '2050'
+  olife: 15
+capacity:
+- year: 2025
+  stock: 15203.904
+- year: 2030
+  stock: 7601.952
+- year: 2035
+  stock: 3800.976
+- year: 2040
+  stock: 0.0
+image: images/LDV-diesel.png

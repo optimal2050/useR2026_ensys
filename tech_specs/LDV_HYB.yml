@@ -1,0 +1,128 @@
+techspec: 1
+class: technology
+name: LDV_HYB
+desc: Gasoline Hybrid Light Duty Vehicle
+units:
+  capacity: 1000 Vehicles
+  use: GWh
+  activity: million km, city
+  costs: MUSD
+cap2act: 12.1
+inputs:
+- comm: GSL
+  unit: GWh
+outputs:
+- comm: PLDVHWY
+  unit: MPKm
+  group: o
+- comm: PLDVCTY
+  unit: MPKm
+  group: o
+aux:
+- acomm: PETRO_REFUEL
+  unit: GWh
+efficiency:
+- comm: GSL
+  cinp2use: 1.0
+- vintage: '2025'
+  comm: PLDVHWY
+  use2cact: 2.657895
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2025'
+  comm: PLDVCTY
+  use2cact: 1.968811
+  cact2cout: 3.18
+  share.up: 0.75
+- vintage: '2030'
+  comm: PLDVHWY
+  use2cact: 2.76864
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2030'
+  comm: PLDVCTY
+  use2cact: 2.050845
+  cact2cout: 3.18
+  share.up: 0.75
+- vintage: '2035'
+  comm: PLDVHWY
+  use2cact: 2.884
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2035'
+  comm: PLDVCTY
+  use2cact: 2.136297
+  cact2cout: 3.18
+  share.up: 0.75
+- vintage: '2040'
+  comm: PLDVHWY
+  use2cact: 3.004167
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2040'
+  comm: PLDVCTY
+  use2cact: 2.225309
+  cact2cout: 3.18
+  share.up: 0.75
+- vintage: '2045'
+  comm: PLDVHWY
+  use2cact: 3.129341
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2045'
+  comm: PLDVCTY
+  use2cact: 2.31803
+  cact2cout: 3.18
+  share.up: 0.75
+- vintage: '2050'
+  comm: PLDVHWY
+  use2cact: 3.25973
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2050'
+  comm: PLDVCTY
+  use2cact: 2.414615
+  cact2cout: 3.18
+  share.up: 0.75
+aux_efficiency:
+- acomm: PETRO_REFUEL
+  comm: GSL
+  cinp2ainp: 1.0
+invcost:
+- vintage: '2025'
+  invcost: 10.2284
+- vintage: '2030'
+  invcost: 10.2284
+- vintage: '2035'
+  invcost: 10.2284
+- vintage: '2040'
+  invcost: 10.2284
+- vintage: '2045'
+  invcost: 10.2284
+- vintage: '2050'
+  invcost: 10.2284
+fixom:
+- fixom: 0.01
+vintages:
+- vintage: '2025'
+  olife: 15
+- vintage: '2030'
+  olife: 15
+- vintage: '2035'
+  olife: 15
+- vintage: '2040'
+  olife: 15
+- vintage: '2045'
+  olife: 15
+- vintage: '2050'
+  olife: 15
+capacity:
+- year: 2025
+  stock: 1504.261
+- year: 2030
+  stock: 752.1305
+- year: 2035
+  stock: 376.06525
+- year: 2040
+  stock: 0.0
+image: images/LDV-hybrid.png

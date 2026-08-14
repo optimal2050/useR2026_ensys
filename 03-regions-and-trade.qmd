@@ -1,0 +1,520 @@
+---
+output: html_document
+editor_options:
+  chunk_output_type: inline
+---
+# Regions and trade {#sec-regions}
+
+Everything so far lived in one region. Real systems are several places at once,
+each with its own resources, its own demand, and links that let power flow between
+them. This chapter adds **space**: a three-region electricity system, a
+**transmission** link and a **rest-of-world import**, then two questions that only
+space can pose — *where* a new electricity **load** wants to be, and what
+**storage and transmission are worth** in a fully renewable system.
+
+```{r}
+source("R/workshop-model.R")
+library(dplyr)
+```
+
+::: {.callout-note appearance="simple"}
+Outputs below are illustrative — with `eval: false` nothing runs at render.
+:::
+
+## Three regions, three endowments {#sec-multiregion}
+
+The trick to a multi-region model is that every data frame carries a `region`
+column, so one object can describe all regions at once with different numbers.
+Here the endowments are deliberately asymmetric: `R1` sits on cheap coal, `R2` on
+gas, `R3` has the best wind and sun and no domestic fossil fuel.
+
+::: {.callout-note appearance="simple"}
+Regions here are flat labels `R1`–`R3`. The **geoscales** package generalises this
+to nested spatial hierarchies (zones within regions within a system), just as
+**timescales** does for time — the space and time "bricks" of the *optimal2050*
+ecosystem.
+:::
+
+```{r}
+REG <- c("R1", "R2", "R3")
+
+# per-region VRE capacity-factor profiles (deterministic, shipped with energyRt)
+prof3 <- utopia_profiles(REG, calendar = "utopia_s4h24")
+
+weather_WSOL <- prof3$weather |>
+  filter(resource == "WSOL") |>
+  select(region, timeslice, wval)
+
+weather_WWIN <- prof3$weather |>
+  filter(resource == "WWIN") |>
+  select(region, timeslice, wval)
+```
+
+```{r}
+ELC <- newCommodity("ELC", unit = "PJ", timeframe = "HOUR")
+COA <- newCommodity(
+  name      = "COA",
+  unit      = "PJ",
+  timeframe = "ANNUAL",
+  emis      = data.frame(comm = "CO2", unit = "kt/PJ", emis = 95)
+)
+GAS <- newCommodity(
+  name      = "GAS",
+  unit      = "PJ",
+  timeframe = "ANNUAL",
+  emis      = data.frame(comm = "CO2", unit = "kt/PJ", emis = 56)
+)
+CO2 <- newCommodity("CO2", unit = "kt", timeframe = "ANNUAL")
+SOL <- newCommodity("SOL", unit = "PJ", timeframe = "HOUR")
+WIN <- newCommodity("WIN", unit = "PJ", timeframe = "HOUR")
+
+# domestic fossil supply exists only where the endowment is (R1 coal, R2 gas)
+SUP_COA <- newSupply(
+  name      = "SUP_COA",
+  commodity = "COA",
+  unit      = "PJ",
+  supply    = data.frame(region = "R1", cost = 2.5)
+)
+SUP_GAS <- newSupply(
+  name      = "SUP_GAS",
+  commodity = "GAS",
+  unit      = "PJ",
+  supply    = data.frame(region = "R2", cost = 6.0)
+)
+
+# free renewable resources everywhere
+SUP_SOL <- newSupply(
+  name      = "SUP_SOL",
+  commodity = "SOL",
+  unit      = "PJ",
+  supply    = data.frame(region = REG, cost = 0)
+)
+SUP_WIN <- newSupply(
+  name      = "SUP_WIN",
+  commodity = "WIN",
+  unit      = "PJ",
+  supply    = data.frame(region = REG, cost = 0)
+)
+
+# demand, larger in R1/R2 than in R3
+DEM_ELC <- newDemand(
+  name      = "DEM_ELC",
+  commodity = "ELC",
+  unit      = "PJ",
+  demand    = data.frame(region = REG, year = 2050, demand = c(80, 70, 40))
+)
+
+WSOL <- newWeather(name = "WSOL", timeframe = "HOUR", weather = weather_WSOL)
+WWIN <- newWeather(name = "WWIN", timeframe = "HOUR", weather = weather_WWIN)
+```
+
+```{r}
+ECOA <- newTechnology(
+  name    = "ECOA",
+  input   = list(comm = "COA", unit = "PJ", combustion = 1),
+  output  = list(comm = "ELC", unit = "PJ"),
+  ceff    = data.frame(comm = "COA", cinp2use = 0.40),
+  invcost = list(invcost = 2000),
+  fixom   = 55,
+  cap2act = 31.536,
+  olife   = 30L,
+  region  = REG
+)
+EGAS <- newTechnology(
+  name    = "EGAS",
+  input   = list(comm = "GAS", unit = "PJ", combustion = 1),
+  output  = list(comm = "ELC", unit = "PJ"),
+  ceff    = data.frame(comm = "GAS", cinp2use = 0.58),
+  invcost = list(invcost = 900),
+  fixom   = 25,
+  cap2act = 31.536,
+  olife   = 25L,
+  region  = REG
+)
+ESOL <- newTechnology(
+  name    = "ESOL",
+  input   = list(comm = "SOL", unit = "PJ"),
+  output  = list(comm = "ELC", unit = "PJ"),
+  ceff    = data.frame(comm = "SOL", cinp2use = 1),
+  weather = list(weather = "WSOL", comm = "SOL", waf.fx = 1),
+  invcost = list(invcost = meur_gw(650)),
+  fixom   = 12,
+  cap2act = 31.536,
+  olife   = 25L,
+  region  = REG
+)
+EWIN <- update(
+  ESOL,
+  name    = "EWIN",
+  input   = list(comm = "WIN", unit = "PJ"),
+  ceff    = data.frame(comm = "WIN", cinp2use = 1),
+  weather = list(weather = "WWIN", comm = "WIN", waf.fx = 1),
+  invcost = list(invcost = meur_gw(1300)),
+  fixom   = 35
+)
+STG_ELC <- newStorage(
+  name      = "STG_ELC",
+  commodity = "ELC",
+  invcost   = list(invcost = meur_pj_kwh(200)),
+  cap2stg   = 4,
+  seff      = data.frame(inpeff = 0.95, outeff = 0.95),
+  olife     = 20L,
+  region    = REG
+)
+
+draw(ECOA) # coal in, electricity out -- the same diagram in every region
+draw(ESOL)
+
+hor <- newHorizon(2025:2055, c(1, 10, 10, 10))
+```
+
+**3.1 — Regions in isolation.** Assemble the six-technology system across `REG`
+with **no** link between regions, solve, and read the generation mix per region.
+Determine where each region lands, and explain what isolation costs the
+renewables-rich `R3`.
+
+::: {.callout-tip collapse="true" title="Solution 3.1"}
+```{r}
+repo_iso <- newRepository(
+  "repo_iso",
+  ELC, COA, GAS, CO2, SOL, WIN,
+  SUP_COA, SUP_GAS, SUP_SOL, SUP_WIN, DEM_ELC,
+  ECOA, EGAS, ESOL, EWIN, WSOL, WWIN, STG_ELC
+)
+
+mod_iso <- newModel(
+  name     = "ISO",
+  data     = repo_iso,
+  region   = REG,
+  discount = WS_DISCOUNT,
+  calendar = WS_CAL,
+  horizon  = hor
+)
+
+scen_iso <- solve_model(mod_iso)
+
+getData(scen_iso, "vTechCap", merge = TRUE)               # capacity by region and tech
+autoplot(scen_iso) + theme_ws()                           # generation mix per region
+```
+Each region solves its own least-cost problem: `R1` leans on its cheap coal, `R2`
+on gas, and `R3` on wind and solar backed by whatever firm capacity it can afford
+locally. Isolated, `R3` cannot sell its cheap renewable surplus to anyone, so it
+over-builds firm capacity (or spills) — the first hint that a wire would pay.
+:::
+
+## A transmission link {#sec-trade}
+
+`newTrade()` connects regions. We give it a **fixed** existing capacity — a wire
+that already exists — rather than letting the model build one, so the value we
+measure later is clean. `teff` is the throughput efficiency (losses).
+
+```{r}
+TBD_R1_R2 <- newTrade(
+  name      = "TBD_R1_R2",
+  commodity = "ELC",
+  routes    = data.frame(src = c("R1", "R2"), dst = c("R2", "R1")),
+  trade     = data.frame(src = c("R1", "R2"), dst = c("R2", "R1"), teff = 0.95),
+  capacity  = data.frame(stock = 5),
+  olife     = 50L
+)
+TBD_R2_R3 <- newTrade(
+  name      = "TBD_R2_R3",
+  commodity = "ELC",
+  routes    = data.frame(src = c("R2", "R3"), dst = c("R3", "R2")),
+  trade     = data.frame(src = c("R2", "R3"), dst = c("R3", "R2"), teff = 0.95),
+  capacity  = data.frame(stock = 5),
+  olife     = 50L
+)
+```
+
+**3.2 — The value of the wire.** Add both links, solve, and compare total cost and
+the generation mix with the isolated case from 3.1. Determine the direction of
+flow and whether `R3` now exports its renewables. Draw the network with
+`plot_trade_map()`.
+
+::: {.callout-tip collapse="true" title="Solution 3.2"}
+```{r}
+repo_TR <- newRepository(
+  "repo_TR",
+  ELC, COA, GAS, CO2, SOL, WIN,
+  SUP_COA, SUP_GAS, SUP_SOL, SUP_WIN, DEM_ELC,
+  ECOA, EGAS, ESOL, EWIN, WSOL, WWIN, STG_ELC,
+  TBD_R1_R2, TBD_R2_R3
+)
+
+mod_TR  <- newModel(
+  name     = "TR",
+  data     = repo_TR,
+  region   = REG,
+  discount = WS_DISCOUNT,
+  calendar = WS_CAL,
+  horizon  = hor
+)
+
+scen_TR <- solve_model(mod_TR)
+
+getData(scen_TR, "vObjective", merge = TRUE)                   # vs scen_iso
+getData(scen_TR, "vTradeIr", merge = TRUE, timeframe = "highest") # flows by slice
+
+# the corridor network on a stylised map (needs the sf package)
+plot_trade_map(repo_TR, map = utopia_modules$maps$honeycomb)
+```
+Total cost falls: cheap renewable energy in `R3` now displaces dearer generation
+next door, so the system builds less firm plant overall. The flows run from
+wherever power is momentarily cheapest toward wherever it is dearest — often out
+of `R3` at midday. A wire is a substitute for both generation and storage.
+:::
+
+## Rest-of-world import {#sec-import}
+
+An **import** brings a commodity in from outside the modelled regions at a price —
+not a region, just a border. Here, imported gas is available everywhere as a
+backstop fuel.
+
+```{r}
+IMP_GAS <- newImport(
+  name      = "IMP_GAS",
+  commodity = "GAS",
+  unit      = "PJ",
+  import    = data.frame(region = REG, price = 8.0) # dearer than R2's domestic gas
+)
+```
+
+**3.3 — The marginal fuel.** Add `IMP_GAS` and solve. Determine where the model
+chooses to import rather than build, and identify what sets the electricity price
+at the margin in regions with no domestic fuel.
+
+::: {.callout-tip collapse="true" title="Solution 3.3"}
+```{r}
+repo_M <- newRepository(
+  "repo_M",
+  ELC, COA, GAS, CO2, SOL, WIN,
+  SUP_COA, SUP_GAS, SUP_SOL, SUP_WIN, IMP_GAS, DEM_ELC,
+  ECOA, EGAS, ESOL, EWIN, WSOL, WWIN, STG_ELC,
+  TBD_R1_R2, TBD_R2_R3
+)
+
+mod_M  <- newModel(
+  name     = "M",
+  data     = repo_M,
+  region   = REG,
+  discount = WS_DISCOUNT,
+  calendar = WS_CAL,
+  horizon  = hor
+)
+
+scen_M <- solve_model(mod_M)
+
+getData(scen_M, "vImportRow", merge = TRUE) # imported gas, by region
+```
+`mod_M` is the model we carry into the policy scenarios of @sec-policy. Imports
+fill the gap where building is not worth it — a region short of both fuel and wire
+capacity leans on the border, and the import price becomes the ceiling that
+domestic options must beat.
+:::
+
+## Where does a new load want to be? {#sec-siting}
+
+Now the spatial question in its sharpest form. Suppose policy commits to deploying
+a fixed amount of a **new electricity-consuming technology** — an electrolyser, a
+fleet of data centres — and lets the model choose *which regions* host it. The
+load consumes electricity to make a product `PRD` with an annual demand; a
+system-wide **capacity target** (summed over regions, by year) fixes how much is
+built; the optimiser places it.
+
+```{r}
+PRD     <- newCommodity("PRD", unit = "PJ", timeframe = "ANNUAL") # e.g. hydrogen
+DEM_PRD <- newDemand(
+  name      = "DEM_PRD",
+  commodity = "PRD",
+  unit      = "PJ",
+  demand    = data.frame(year = 2050, demand = 30)                # met from any region
+)
+
+# a new load: consumes ELC (hourly), makes PRD; buildable in every region
+LOAD_base <- newTechnology(
+  name    = "LOAD",
+  desc    = "New base load",
+  input   = list(comm = "ELC", unit = "PJ"),
+  output  = list(comm = "PRD", unit = "PJ"),
+  ceff    = data.frame(comm = "ELC", cinp2use = 1.4), # 1 / efficiency
+  af      = data.frame(af.lo = 0.9),                  # must run flat, every hour
+  invcost = list(invcost = meur_gw(500)),
+  fixom   = 10,
+  cap2act = 31.536,
+  olife   = 20L,
+  region  = REG
+)
+
+# system-wide deployment target: total installed capacity over all regions
+TARGET <- newConstraint(
+  name     = "TARGET",
+  eq       = ">=",
+  for.each = data.frame(year = 2050),
+  term1    = list(variable = "vTechCap", for.sum = list(region = REG, tech = "LOAD")),
+  rhs      = data.frame(year = 2050, rhs = 1.2),
+  defVal   = 0
+)
+
+draw(LOAD_base) # electricity in, product (PRD) out
+```
+
+**3.4 — Siting a base load.** Add `PRD`, `DEM_PRD`, `LOAD_base` and `TARGET` to the
+model, solve, and read `vTechNewCap` for `LOAD` by region. A base load runs flat
+around the clock — determine which region the model selects, and explain why.
+
+::: {.callout-tip collapse="true" title="Solution 3.4"}
+```{r}
+repo_base <- newRepository(
+  "repo_base",
+  ELC, COA, GAS, CO2, SOL, WIN, PRD,
+  SUP_COA, SUP_GAS, SUP_SOL, SUP_WIN, IMP_GAS, DEM_ELC, DEM_PRD,
+  ECOA, EGAS, ESOL, EWIN, WSOL, WWIN, STG_ELC,
+  TBD_R1_R2, TBD_R2_R3, LOAD_base, TARGET
+)
+
+mod_base  <- newModel(
+  name     = "SITE_BASE",
+  data     = repo_base,
+  region   = REG,
+  discount = WS_DISCOUNT,
+  calendar = WS_CAL,
+  horizon  = hor
+)
+
+scen_base <- solve_model(mod_base)
+
+getData(scen_base, "vTechNewCap", tech = "LOAD", merge = TRUE) # region allocation
+```
+A must-run load needs **firm, cheap power every hour**, so it gravitates to the
+region that can supply that most cheaply around the clock — the coal/gas regions
+rather than renewables-rich `R3`, whose cheap energy comes and goes with the
+weather. Flat demand wants flat supply.
+:::
+
+**3.5 — Siting a flexible load.** Now make the same load **flexible**: it may
+consume whenever power is cheap, provided it makes its annual `PRD` in total. Set
+`af.lo = 0, af.up = 1` and re-solve. Determine whether the model moves it to a
+different region.
+
+::: {.callout-tip collapse="true" title="Solution 3.5"}
+```{r}
+LOAD_flex <- update(
+  LOAD_base,
+  desc = "New flexible load",
+  af   = data.frame(af.lo = 0, af.up = 1) # run any hour, idle any hour
+)
+
+repo_flex <- newRepository(
+  "repo_flex",
+  ELC, COA, GAS, CO2, SOL, WIN, PRD,
+  SUP_COA, SUP_GAS, SUP_SOL, SUP_WIN, IMP_GAS, DEM_ELC, DEM_PRD,
+  ECOA, EGAS, ESOL, EWIN, WSOL, WWIN, STG_ELC,
+  TBD_R1_R2, TBD_R2_R3, LOAD_flex, TARGET
+)
+
+mod_flex  <- newModel(
+  name     = "SITE_FLEX",
+  data     = repo_flex,
+  region   = REG,
+  discount = WS_DISCOUNT,
+  calendar = WS_CAL,
+  horizon  = hor
+)
+
+scen_flex <- solve_model(mod_flex)
+
+getData(scen_flex, "vTechNewCap", tech = "LOAD", merge = TRUE)
+```
+Because it can wait for cheap hours, the flexible load is drawn toward **`R3`**: it
+absorbs wind and solar that would otherwise be **curtailed** (the surplus of
+@sec-curtailment), turning it into product instead of waste. Same target, opposite
+siting — flexibility, not the average price, decides where it belongs. This
+flexible load is exactly an electrolyser; @sec-processes builds one properly.
+:::
+
+## The value of storage and transmission {#sec-value}
+
+The renewables-rich cases hint at it; now measure it. Take a **fully renewable**
+system — drop the thermal plants so only wind, solar, storage and wires remain —
+and price storage and transmission by **removing** them and reading how much total
+cost rises.
+
+```{r}
+# renewable-only repository: no ECOA/EGAS, no fossil supply/import
+repo_re <- newRepository(
+  "repo_re",
+  ELC, SOL, WIN, PRD,
+  SUP_SOL, SUP_WIN, DEM_ELC, DEM_PRD,
+  ESOL, EWIN, WSOL, WWIN, STG_ELC,
+  TBD_R1_R2, TBD_R2_R3, LOAD_flex, TARGET
+)
+
+# the same system with storage removed, and with transmission removed
+repo_re_noSTG <- newRepository(
+  "repo_re_noSTG",
+  ELC, SOL, WIN, PRD,
+  SUP_SOL, SUP_WIN, DEM_ELC, DEM_PRD,
+  ESOL, EWIN, WSOL, WWIN,
+  TBD_R1_R2, TBD_R2_R3, LOAD_flex, TARGET
+)
+repo_re_noTR <- newRepository(
+  "repo_re_noTR",
+  ELC, SOL, WIN, PRD,
+  SUP_SOL, SUP_WIN, DEM_ELC, DEM_PRD,
+  ESOL, EWIN, WSOL, WWIN, STG_ELC,
+  LOAD_flex, TARGET
+)
+```
+
+**3.6 — What are storage and transmission worth?** Solve the renewable system in
+full, then again with storage removed, and again with transmission removed. The
+cost increase on removal is the value. **Inspect `vDummyImport`** each time — if it
+is non-zero the model is meeting demand with expensive penalty slack, and the
+measured "value" is partly that penalty.
+
+::: {.callout-tip collapse="true" title="Solution 3.6"}
+```{r}
+mod_re     <- newModel("RE_full",  data = repo_re,       region = REG,
+                       discount = WS_DISCOUNT, calendar = WS_CAL, horizon = hor)
+mod_re_noS <- newModel("RE_noSTG", data = repo_re_noSTG, region = REG,
+                       discount = WS_DISCOUNT, calendar = WS_CAL, horizon = hor)
+mod_re_noT <- newModel("RE_noTR",  data = repo_re_noTR,  region = REG,
+                       discount = WS_DISCOUNT, calendar = WS_CAL, horizon = hor)
+
+scen_re     <- solve_model(mod_re)
+scen_re_noS <- solve_model(mod_re_noS)
+scen_re_noT <- solve_model(mod_re_noT)
+
+obj_full <- getData(scen_re,     "vObjective", merge = TRUE)$value
+obj_noS  <- getData(scen_re_noS, "vObjective", merge = TRUE)$value
+obj_noT  <- getData(scen_re_noT, "vObjective", merge = TRUE)$value
+
+obj_noS - obj_full # value of storage: cost increase when removed
+obj_noT - obj_full # value of transmission
+
+# is the model quietly buying unmet demand as penalty slack?
+getData(scen_re_noS, "vDummyImport", merge = TRUE)
+getData(scen_re_noT, "vDummyImport", merge = TRUE)
+```
+Remove storage and the system must either over-build renewables to cover the
+evening or lean on the wire; remove the wire and every region must self-balance its
+own weather — either way total cost rises, and that rise is what the missing asset
+was worth. Watch `vDummyImport`: if removing an asset leaves demand unservable, the
+model quietly buys the shortfall as penalty slack rather than reporting infeasible,
+and the cost balloons — a valid ranking of value, but read knowing part of it is
+the penalty, not real dispatch. Storage and transmission are partial substitutes:
+each buys back the curtailment the other would leave on the table.
+:::
+
+## What you built
+
+Space added the questions a single region cannot ask. You assembled a
+**multi-region** system from `region`-keyed data, connected it with a fixed
+**transmission** link and a **rest-of-world import**, mapped the network with
+`plot_trade_map()`, and used it to **site** a new load — discovering that a
+*flexible* consumer wants to live where the renewables are while a *firm* one does
+not — and to **value** storage and transmission by removing them from a fully
+renewable system. @sec-processes turns to the inside of the box: how to model
+processes like the electrolyser, a blast furnace, or a vehicle fleet.
+@sec-policy takes `mod_M` and puts policy on it.

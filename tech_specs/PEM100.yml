@@ -1,0 +1,104 @@
+techspec: 1
+class: technology
+name: PEM100
+desc: PEMEC Electrolyzer 100 MW (DEA catalog)
+units:
+  capacity: GW_ELC
+  use: GWh
+  activity: GWh
+  costs: MEUR
+cap2act: 8760.0
+image: images/electrolyzer_PEM.png
+inputs:
+- comm: ELC
+  unit: GWh
+outputs:
+- comm: H2
+  unit: GWh_H2
+- comm: HEA80
+  unit: GWh
+efficiency:
+- comm: ELC
+  cinp2use: 1.0
+- vintage: '2020'
+  comm: H2
+  cact2cout: 0.5258481
+- vintage: '2020'
+  comm: HEA80
+  cact2cout: 0.3358607
+- vintage: '2025'
+  comm: H2
+  cact2cout: 0.5500358
+- vintage: '2025'
+  comm: HEA80
+  cact2cout: 0.3066918
+- vintage: '2030'
+  comm: H2
+  cact2cout: 0.5849812
+- vintage: '2030'
+  comm: HEA80
+  cact2cout: 0.26455
+- vintage: '2040'
+  comm: H2
+  cact2cout: 0.6159708
+- vintage: '2040'
+  comm: HEA80
+  cact2cout: 0.2271784
+- vintage: '2050'
+  comm: H2
+  cact2cout: 0.6638902
+- vintage: '2050'
+  comm: HEA80
+  cact2cout: 0.1693907
+invcost:
+- vintage: '2020'
+  year: 2020
+  invcost: 1300.0
+- vintage: '2025'
+  year: 2025
+  invcost: 975.0
+- vintage: '2030'
+  year: 2030
+  invcost: 650.0
+- vintage: '2040'
+  year: 2040
+  invcost: 500.0
+- vintage: '2050'
+  year: 2050
+  invcost: 350.0
+fixom:
+- vintage: '2020'
+  year: 2020
+  fixom: 26.0
+- vintage: '2025'
+  year: 2025
+  fixom: 19.5
+- vintage: '2030'
+  year: 2030
+  fixom: 13.0
+- vintage: '2040'
+  year: 2040
+  fixom: 10.0
+- vintage: '2050'
+  year: 2050
+  fixom: 7.0
+vintages:
+- vintage: '2020'
+  start: 2020
+  end: 2024
+  olife: 25
+- vintage: '2025'
+  start: 2025
+  end: 2029
+  olife: 25
+- vintage: '2030'
+  start: 2030
+  end: 2039
+  olife: 25
+- vintage: '2040'
+  start: 2040
+  end: 2049
+  olife: 25
+- vintage: '2050'
+  start: 2050
+  olife: 25

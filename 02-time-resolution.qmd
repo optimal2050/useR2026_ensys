@@ -1,0 +1,690 @@
+---
+output: html_document
+editor_options:
+  chunk_output_type: inline
+---
+# Time resolution {#sec-time}
+
+Chapter 1 lived in a single year, a single slice, a single region — enough to see
+the energy balance and nothing to distract from it. This chapter adds **time**:
+a horizon of several years to invest across, a discount rate to weigh the future,
+hours and seasons within the year, ageing capacity (**vintages**), and the two
+things that only make sense once time is resolved — **storage** and
+**intermittent** renewables.
+
+We keep **one region** (`R1`) throughout; regions arrive in @sec-regions.
+
+```{r}
+source("R/workshop-model.R")
+library(dplyr) # filter(), select(), joins used in the exercises
+```
+
+::: {.callout-note appearance="simple"}
+Outputs shown below are illustrative. With `eval: false` set for the book,
+nothing runs at render time — copy each chunk into your own session to see the
+real numbers, which is also how you check the ones in the prose.
+:::
+
+## A model that spans years {#sec-horizon}
+
+So far the "horizon" was one year. `newHorizon()` describes a **study period** and
+how it is divided into **intervals**, each solved as one representative
+*milestone* year. Investment decisions are made once per milestone and carried
+forward.
+
+```{r}
+ELC <- newCommodity(
+  name      = "ELC",
+  desc      = "Electricity",
+  unit      = "PJ",
+  timeframe = "ANNUAL"
+)
+
+COA <- newCommodity(
+  name      = "COA",
+  desc      = "Coal",
+  unit      = "PJ",
+  timeframe = "ANNUAL",
+  emis      = data.frame(comm = "CO2", unit = "kt/PJ", emis = 95)
+)
+
+GAS <- newCommodity(
+  name      = "GAS",
+  desc      = "Natural gas",
+  unit      = "PJ",
+  timeframe = "ANNUAL",
+  emis      = data.frame(comm = "CO2", unit = "kt/PJ", emis = 56)
+)
+
+CO2 <- newCommodity(
+  name      = "CO2",
+  desc      = "Carbon dioxide",
+  unit      = "kt",
+  timeframe = "ANNUAL"
+)
+
+SUP_COA <- newSupply(
+  name      = "SUP_COA",
+  commodity = "COA",
+  unit      = "PJ",
+  supply    = data.frame(cost = 2.5)
+)
+
+SUP_GAS <- newSupply(
+  name      = "SUP_GAS",
+  commodity = "GAS",
+  unit      = "PJ",
+  supply    = data.frame(cost = 6.0)
+)
+
+# demand grows from 50 PJ (2025) to 80 PJ (2050); energyRt interpolates between
+DEM_ELC <- newDemand(
+  name      = "DEM_ELC",
+  commodity = "ELC",
+  unit      = "PJ",
+  demand    = data.frame(year = c(2025, 2050), demand = c(50, 80))
+)
+
+ECOA <- newTechnology(
+  name    = "ECOA",
+  desc    = "Coal plant",
+  input   = list(comm = "COA", unit = "PJ", combustion = 1),
+  output  = list(comm = "ELC", unit = "PJ"),
+  ceff    = data.frame(comm = "COA", cinp2use = 0.40),
+  invcost = list(invcost = 2000),
+  fixom   = 55,
+  cap2act = 31.536,
+  olife   = 30L
+)
+
+EGAS <- newTechnology(
+  name    = "EGAS",
+  desc    = "Gas plant",
+  input   = list(comm = "GAS", unit = "PJ", combustion = 1),
+  output  = list(comm = "ELC", unit = "PJ"),
+  ceff    = data.frame(comm = "GAS", cinp2use = 0.58),
+  invcost = list(invcost = 900),
+  fixom   = 25,
+  cap2act = 31.536,
+  olife   = 25L
+)
+
+draw(ECOA) # each technology's reference-energy-system diagram: coal in, ELC out
+draw(EGAS)
+
+repo_YR <- newRepository(
+  "repo_YR",
+  ELC, COA, GAS, CO2,
+  SUP_COA, SUP_GAS, DEM_ELC, ECOA, EGAS
+)
+```
+
+The horizon below begins with a one-year base period and adds three ten-year
+intervals. `autoplot()` shows the milestone years it produces.
+
+```{r}
+horizon_2025_2050_by10 <- newHorizon(
+  period    = 2025:2055,
+  intervals = c(1, 10, 10, 10)
+)
+
+autoplot(horizon_2025_2050_by10)
+```
+
+`solve_model()` does in one step what you did by hand in Chapter 1 — it expands
+the description over years and slices and sends it to the solver.
+
+```{r}
+mod_YR <- newModel(
+  name     = "YR",
+  data     = repo_YR,
+  region   = "R1",
+  discount = WS_DISCOUNT,
+  horizon  = horizon_2025_2050_by10
+)
+
+scen_YR <- solve_model(mod_YR)
+
+getData(scen_YR, "vTechCap", merge = TRUE)   # capacity by technology and milestone
+getData(scen_YR, "vObjective", merge = TRUE) # total discounted cost, MEUR
+```
+
+A handful of milestone years — not one per calendar year — keeps the model small
+while still spanning several decades of investment.
+
+**2.1 — Temporal aggregation and problem size.** Re-solve the model with a fully
+annual horizon, `newHorizon(period = 2025:2055)`, in which each calendar year
+constitutes its own period. Compare the resulting problem size (`model_size()`)
+and objective value with those of the milestone formulation. Assess whether the
+additional temporal detail materially alters the investment path, and whether it
+justifies the increase in problem dimension.
+
+::: {.callout-tip collapse="true" title="Solution 2.1"}
+```{r}
+horizon_annual <- newHorizon(period = 2025:2055)
+
+mod_annual <- newModel(
+  name     = "YR_annual",
+  data     = repo_YR,
+  region   = "R1",
+  discount = WS_DISCOUNT,
+  horizon  = horizon_annual
+)
+
+scen_annual <- solve_model(mod_annual)
+
+model_size(scen_YR)                             # four milestones
+model_size(scen_annual)                         # one period per year
+
+getData(scen_YR, "vObjective", merge = TRUE)
+getData(scen_annual, "vObjective", merge = TRUE)
+```
+The annual formulation is several times larger, yet the investment path is nearly
+identical: with smooth, monotone demand there is little that a yearly grid
+captures which four milestones miss. Milestones are the default precisely because
+they recover most of the accuracy at a fraction of the size. The detail that
+*does* matter — hours and seasons — lies **within** the year, and occupies the
+remainder of this chapter.
+:::
+
+## Discounting: business vs social planner {#sec-discount}
+
+Spanning years forces a question Chapter 1 could ignore: a euro spent in 2050 is
+not a euro spent today. energyRt uses **two** rates, and it is worth keeping them
+apart:
+
+- **SDR** (social discount rate) — discounts the *stream of system costs* in the
+  objective. This is the planner's view of the future.
+- **WACC** (weighted average cost of capital) — annuitises a lump investment into
+  an *equivalent annual cost* (EAC). This is how expensive capital is to the
+  entity that builds.
+
+The `discount =` argument is a shorthand that sets **both** rates equal
+(`discount = 0.05` ⇒ `wacc = sdr = 0.05`). A social planner adopts one low rate
+over each asset's full life. A private investor applies a **higher WACC** and
+often recovers capital over a **shorter payback** than the asset operates.
+
+```{r}
+# social planner: one low rate, capital recovered over the full technical life
+mod_soc <- newModel(
+  name     = "SOC",
+  data     = repo_YR,
+  region   = "R1",
+  discount = 0.03,
+  horizon  = horizon_2025_2050_by10
+)
+
+# investor: split rates, and the coal plant must repay its capital in 15 years
+ECOA_inv <- update(
+  ECOA,
+  invcost = list(invcost = 2000, wacc = 0.10, payback = 15)
+)
+
+repo_inv <- newRepository(
+  "repo_inv",
+  ELC, COA, GAS, CO2,
+  SUP_COA, SUP_GAS, DEM_ELC, ECOA_inv, EGAS
+)
+
+mod_inv <- newModel(
+  name     = "INV",
+  data     = repo_inv,
+  region   = "R1",
+  discount = data.frame(wacc = 0.10, sdr = 0.03),
+  horizon  = horizon_2025_2050_by10
+)
+
+scen_soc <- solve_model(mod_soc)
+scen_inv <- solve_model(mod_inv)
+
+getData(scen_soc, "vTechEac", merge = TRUE)  # annualised capital charge
+getData(scen_inv, "vTechEac", merge = TRUE)  # higher under investor terms
+```
+
+Same `invcost`, very different annual capital charge: a 10% WACC recovered over 15
+years annuitises far more steeply than 3% over 30 years, so the investor's coal
+plant appears dearer and the model leans harder on gas.
+
+::: {.callout-note appearance="simple"}
+The `wacc`/`sdr` split works on every backend, but the finite **`payback`**
+feature is, as of energyRt 0.80.x, implemented **only on GLPK** for testing. Its support in other backends (GAMS, Pyomo, JuMP) is on the way.  
+Omitting `discount` entirely leaves both rates at **0** (an undiscounted model), so always set it.  
+There is no per-technology `sdr` — the social rate is a property of the model.
+:::
+
+The same divergence can be shown without solving, using `levcost()` (whose
+`discount` argument *is* the WACC).
+
+**2.2 — The cost of capital and technology choice.** A photovoltaic plant is
+almost entirely capital and carries no fuel cost; a gas peaker is the converse.
+Using `levcost()`, compute the levelised cost of a capital-intensive generator
+under (a) the social-planner assumption (3%, full technical life) and (b) the
+investor assumption (10%, 15-year payback). Determine which technology's LCOE is
+more sensitive to the cost of capital, and explain how that sensitivity shifts the
+least-cost generation mix toward or away from renewables.
+
+::: {.callout-tip collapse="true" title="Solution 2.2"}
+```{r}
+# a capital-heavy generator: high invcost, no fuel
+SOLARish <- newTechnology(
+  name    = "SOLARish",
+  desc    = "Capital-heavy generator",
+  input   = list(comm = "SOL", unit = "PJ"),
+  output  = list(comm = "ELC", unit = "PJ"),
+  ceff    = data.frame(comm = "SOL", cinp2use = 1),
+  invcost = list(invcost = meur_gw(650)),
+  fixom   = 12,
+  cap2act = 31.536,
+  olife   = 25L
+)
+
+lc_soc <- levcost(SOLARish, discount = 0.03) # planner
+
+SOLAR_inv <- update(
+  SOLARish,
+  invcost = list(invcost = meur_gw(650), wacc = 0.10, payback = 15)
+)
+
+lc_inv <- levcost(SOLAR_inv, discount = 0.10) # investor
+
+lc_soc$levcost_npv
+lc_inv$levcost_npv
+```
+The capital-intensive plant's LCOE rises sharply under investor assumptions —
+most of its lifetime cost is the annuity, and the annuity is precisely what the
+discount rate acts upon. A gas peaker scarcely moves, because most of *its* cost
+is fuel, which no discount rate touches. A high cost of capital is therefore a
+quiet thumb on the scale **against** renewables and **in favour of** fuel-burning
+plant: the business case and the social case can rank the same technologies
+differently from identical physics.
+:::
+
+## Within the year: seasons and hours {#sec-subannual}
+
+A commodity balanced on `ANNUAL` need only add up over the whole year — a solar
+panel could "supply" midnight demand. Real electricity balances **every hour**. A
+**calendar** divides the year into time slices; a commodity's `timeframe` states
+which level it balances on.
+
+```{r}
+WS_CAL # calendars$utopia_s4h24: 4 seasons x 24 h = 96 slices
+
+head(WS_CAL@timeslice_share) # each slice's share of the year
+
+autoplot(WS_CAL) # the calendar's nested season / hour structure
+```
+
+::: {.callout-note appearance="simple"}
+Calendars come from the **timeslices** package; its successor **timescales**
+generalises them to arbitrary nested timeframes, and its spatial twin
+**geoscales** does the same for regions — the time and space "bricks" of the
+*optimal2050* ecosystem that @sec-regions builds on.
+:::
+
+To balance electricity hourly, set `timeframe = "HOUR"` on `ELC` and attach the
+calendar to the model.
+
+```{r}
+ELC_h <- update(ELC, timeframe = "HOUR")
+```
+
+**2.3 — Temporal resolution and the visibility of storage.** Solve the
+electricity model on three calendars of increasing resolution —
+`calendars$utopia_annual` (1 slice), `calendars$utopia_seasons` (12), and
+`calendars$utopia_s4h24` (96) — supplied through `newModel(..., calendar = )`.
+Observe how the problem size grows, and explain why the value of storage is
+invisible at annual resolution and becomes apparent only once the day acquires an
+internal shape.
+
+::: {.callout-tip collapse="true" title="Solution 2.3"}
+```{r}
+mod_annual_cal <- newModel(
+  name     = "RES_annual",
+  data     = repo_YR,
+  region   = "R1",
+  discount = WS_DISCOUNT,
+  calendar = calendars$utopia_annual,
+  horizon  = horizon_2025_2050_by10
+)
+
+mod_seasons <- newModel(
+  name     = "RES_seasons",
+  data     = repo_YR,
+  region   = "R1",
+  discount = WS_DISCOUNT,
+  calendar = calendars$utopia_seasons,
+  horizon  = horizon_2025_2050_by10
+)
+
+mod_s4h24 <- newModel(
+  name     = "RES_s4h24",
+  data     = repo_YR,
+  region   = "R1",
+  discount = WS_DISCOUNT,
+  calendar = calendars$utopia_s4h24,
+  horizon  = horizon_2025_2050_by10
+)
+
+scen_annual_cal <- solve_model(mod_annual_cal)
+scen_seasons    <- solve_model(mod_seasons)
+scen_s4h24      <- solve_model(mod_s4h24)
+
+model_size(scen_annual_cal)
+model_size(scen_seasons)
+model_size(scen_s4h24)
+
+getData(scen_annual_cal, "vObjective", merge = TRUE)
+getData(scen_seasons, "vObjective", merge = TRUE)
+getData(scen_s4h24, "vObjective", merge = TRUE)
+```
+More slices, more rows — and a model able to distinguish noon from midnight. On an
+annual calendar a battery has no intraday gap to arbitrage, so the optimiser never
+builds one; the value it contributes in @sec-storage cannot appear until the
+calendar carries sub-daily structure. Resolution is not decoration: it determines
+which technologies can even be *seen* to be useful.
+:::
+
+## Vintages: one technology, evolving parameters {#sec-vintages}
+
+A coal plant commissioned in 2040 is more efficient than one built in 2020 — yet
+it is still *the coal-plant technology*, not a new one. **Vintages** are how a
+single technology carries **parameters that depend on the year it was built**:
+efficiency, investment cost, fixed O&M, even operating life can each take a
+different value per build-year cohort, while the technology stays one object in the
+model. A vintage names that cohort — a build window (`start`/`end`) with its own
+numbers.
+
+```{r}
+# one coal technology whose efficiency improves with each build-year cohort
+ECOA_v <- newTechnology(
+  name    = "ECOA",
+  desc    = "Coal plant, improving by build year",
+  input   = list(comm = "COA", unit = "PJ", combustion = 1),
+  output  = list(comm = "ELC", unit = "PJ"),
+  ceff    = data.frame(
+    vintage  = c("2020", "2030", "2040"),
+    comm     = "COA",
+    cinp2use = c(0.40, 0.43, 0.46)   # newer builds burn coal more efficiently
+  ),
+  invcost = list(invcost = 2000),
+  fixom   = 55,
+  cap2act = 31.536,
+  vintage = data.frame(
+    vintage = c("2020", "2030", "2040"),
+    start   = c(2020, 2030, 2040),
+    end     = c(2029, 2039, 2050),
+    olife   = 30
+  )
+)
+
+draw(ECOA_v)
+```
+
+The electrolyser and vehicle technologies in @sec-processes are built exactly this
+way — the `FPEM100` electrolyser's hydrogen efficiency climbs from 0.53 (2020) to
+0.66 (2050) across its vintages, and the one spec still describes one machine.
+
+A **second**, related use of the same machinery is an existing **fleet** that
+retires over time: give a technology a `capacity` stock declared at several years
+and energyRt reads it as a declining retirement path, optionally letting the
+optimiser retire units early.
+
+```{r}
+# the same technology, now also carrying an existing fleet that retires by 2050
+ECOA_fleet <- update(
+  ECOA_v,
+  capacity = data.frame(year = c(2025, 2050), stock = c(1.2, 0)),
+  optimizeRetirement = TRUE
+)
+```
+
+**2.4 — Parameters by build year.** Put `ECOA_v` in the model, solve, and read
+`vTechCap` / `vTechNewCap` by vintage. Confirm that capacity built in later years
+carries the more efficient coefficients, and use `autoplot(mod, type = "windows")`
+to visualise each vintage's build window against its operating life.
+
+::: {.callout-tip collapse="true" title="Solution 2.4"}
+```{r}
+repo_v <- newRepository(
+  "repo_v",
+  ELC, COA, GAS, CO2,
+  SUP_COA, SUP_GAS, DEM_ELC, ECOA_v, EGAS
+)
+
+mod_v <- newModel(
+  name     = "VINT",
+  data     = repo_v,
+  region   = "R1",
+  discount = WS_DISCOUNT,
+  horizon  = horizon_2025_2050_by10
+)
+
+autoplot(mod_v, type = "windows") + theme_ws()   # vintage build windows vs olife
+
+scen_v <- solve_model(mod_v)
+
+getData(scen_v, "vTechCap", merge = TRUE)    # installed capacity, by vintage and year
+getData(scen_v, "vTechNewCap", merge = TRUE) # new build, by vintage
+```
+Each vintage is a distinct cohort: capacity built from 2040 carries
+`cinp2use = 0.46` and burns less coal per unit of electricity than the 2020
+cohort's 0.40 — even though both are "the coal plant." Vintaging is what lets one
+technology track a changing world (improving efficiency, falling costs, an ageing
+fleet) without multiplying into a dozen near-duplicate objects.
+:::
+
+## Storage and intermittent sources {#sec-storage}
+
+Two technologies acquire meaning only once the day has a shape. **Weather-driven**
+generators (solar, wind) produce on a fixed profile rather than on command;
+**storage** moves energy between slices.
+
+```{r}
+# free renewable resources (no fuel cost), balanced hourly
+SOL <- newCommodity("SOL", unit = "PJ", timeframe = "HOUR")
+WIN <- newCommodity("WIN", unit = "PJ", timeframe = "HOUR")
+
+SUP_SOL <- newSupply(
+  name      = "SUP_SOL",
+  commodity = "SOL",
+  unit      = "PJ",
+  supply    = data.frame(cost = 0)
+)
+
+SUP_WIN <- newSupply(
+  name      = "SUP_WIN",
+  commodity = "WIN",
+  unit      = "PJ",
+  supply    = data.frame(cost = 0)
+)
+
+# capacity-factor profiles for R1 on this calendar (deterministic, shipped)
+weather_WSOL <- prof$weather |>
+  filter(resource == "WSOL") |>
+  select(region, timeslice, wval)
+
+weather_WWIN <- prof$weather |>
+  filter(resource == "WWIN") |>
+  select(region, timeslice, wval)
+
+WSOL <- newWeather(
+  name      = "WSOL",
+  timeframe = "HOUR",
+  weather   = weather_WSOL
+)
+
+WWIN <- newWeather(
+  name      = "WWIN",
+  timeframe = "HOUR",
+  weather   = weather_WWIN
+)
+
+# waf.fx = 1 fixes output to the weather profile; because electricity is a
+# free-disposal commodity (limtype "LO"), any surplus is dumped and appears in
+# vBalance -- which is how we measure curtailment in @sec-curtailment
+ESOL <- newTechnology(
+  name    = "ESOL",
+  desc    = "Solar PV",
+  input   = list(comm = "SOL", unit = "PJ"),
+  output  = list(comm = "ELC", unit = "PJ"),
+  ceff    = data.frame(comm = "SOL", cinp2use = 1),
+  weather = list(weather = "WSOL", comm = "SOL", waf.fx = 1),
+  invcost = list(invcost = meur_gw(650)),
+  fixom   = 12,
+  cap2act = 31.536,
+  olife   = 25L
+)
+
+EWIN <- update(
+  ESOL,
+  name    = "EWIN",
+  desc    = "Onshore wind",
+  input   = list(comm = "WIN", unit = "PJ"),
+  ceff    = data.frame(comm = "WIN", cinp2use = 1),
+  weather = list(weather = "WWIN", comm = "WIN", waf.fx = 1),
+  invcost = list(invcost = meur_gw(1300)),
+  fixom   = 35
+)
+
+# a 4-hour battery on electricity
+STG_ELC <- newStorage(
+  name      = "STG_ELC",
+  desc      = "Grid battery, 4 h",
+  commodity = "ELC",
+  invcost   = list(invcost = meur_pj_kwh(200)),
+  cap2stg   = 4,
+  seff      = data.frame(inpeff = 0.95, outeff = 0.95),
+  olife     = 20L
+)
+
+draw(ESOL)    # solar: the SOL resource in, electricity out
+draw(STG_ELC) # the battery, charging and discharging electricity
+```
+
+Assemble the hourly model (electricity now `timeframe = "HOUR"`) and solve.
+
+```{r}
+repo_VRE <- newRepository(
+  "repo_VRE",
+  ELC_h, COA, GAS, CO2, SOL, WIN,
+  SUP_COA, SUP_GAS, SUP_SOL, SUP_WIN, DEM_ELC,
+  ECOA, EGAS, ESOL, EWIN, WSOL, WWIN, STG_ELC
+)
+
+mod_VRE <- newModel(
+  name     = "VRE",
+  data     = repo_VRE,
+  region   = "R1",
+  discount = WS_DISCOUNT,
+  calendar = WS_CAL,
+  horizon  = horizon_2025_2050_by10
+)
+
+scen_VRE <- solve_model(mod_VRE)
+
+getData(scen_VRE, "vTechCap", merge = TRUE)                           # the mix
+getData(scen_VRE, "vStorageInp", merge = TRUE, timeframe = "highest") # charging
+
+autoplot(scen_VRE) + theme_ws() # the generation mix by technology and year
+```
+
+**2.5 — Complementarity of wind and solar resources.** Plot the capacity factors
+of `WSOL` and `WWIN` across the day and the seasons
+(`autoplot(WSOL, calendar = WS_CAL)`). Identify the periods in which one resource
+rises as the other falls, and explain how this complementarity alters the demand
+placed on storage.
+
+::: {.callout-tip collapse="true" title="Solution 2.5"}
+```{r}
+autoplot(WSOL, calendar = WS_CAL) + theme_ws()
+autoplot(WWIN, calendar = WS_CAL) + theme_ws()
+```
+Solar is a midday peak that collapses to zero at night; wind is flatter and often
+stronger overnight and in winter. Because the two peak at different times, a
+combination of them requires *less* storage than either alone — the battery need
+only bridge what the pair still leaves uncovered.
+:::
+
+## Curtailment {#sec-curtailment}
+
+Because `waf.fx = 1` **fixes** each renewable's output to its weather profile, a
+panel or turbine produces its full potential every hour, whether or not it is
+needed. Electricity is a **free-disposal** commodity by default
+(`limtype = "LO"`, so its balance is *production ≥ consumption*), so the model may
+simply dump any surplus. That dumped surplus — electricity generated but not
+consumed — *is* the balance variable **`vBalance`**, so curtailment reads straight
+off it, with no reconstruction:
+
+```
+vBalance(ELC) = Σ vOutTot − Σ vInpTot  ≥ 0    (the curtailed surplus)
+```
+
+Had we instead set `waf.up = 1`, the optimiser would *under-produce* rather than
+spill, `vBalance` would be identically zero (and so absent from the output, which
+records only non-zero balances), and curtailment would have to be inferred from
+potential minus output.
+
+There is a catch: whether any surplus arises at all depends on how much renewable
+capacity is built. In the least-cost mix above, cheap dispatchable thermal is free
+to fill any gap, so the optimiser builds only modest solar and wind and backs the
+thermal fleet down when they are plentiful — almost nothing is spilled, and
+`vBalance` is essentially zero. **Curtailment is a phenomenon of high renewable
+penetration**, not of renewables as such.
+
+**2.6 — Quantifying curtailment.** Confirm that the free least-cost mix curtails
+little, then force a large solar fleet — so that its midday output must exceed
+demand — re-solve, and read the curtailed surplus from `vBalance`. Explain how the
+surplus responds to storage and to further increases in solar capacity.
+
+::: {.callout-tip collapse="true" title="Solution 2.6"}
+```{r}
+# the free least-cost mix spills little or nothing
+getData(scen_VRE, "vBalance", comm = "ELC", merge = TRUE)
+
+# force a high solar penetration: at least 8 GW installed
+ESOL_big <- update(
+  ESOL,
+  capacity = data.frame(year = 2050, cap.lo = 8)
+)
+
+repo_curt <- newRepository(
+  "repo_curt",
+  ELC_h, COA, GAS, CO2, SOL, WIN,
+  SUP_COA, SUP_GAS, SUP_SOL, SUP_WIN, DEM_ELC,
+  ECOA, EGAS, ESOL_big, EWIN, WSOL, WWIN, STG_ELC
+)
+
+mod_curt <- newModel(
+  name     = "CURT",
+  data     = repo_curt,
+  region   = "R1",
+  discount = WS_DISCOUNT,
+  calendar = WS_CAL,
+  horizon  = horizon_2025_2050_by10
+)
+
+scen_curt <- solve_model(mod_curt)
+
+# now the surplus is real: curtailed electricity by slice, then as an annual total
+getData(scen_curt, "vBalance", comm = "ELC", merge = TRUE, timeframe = "highest")
+getData(scen_curt, "vBalance", comm = "ELC", merge = TRUE)
+```
+With cheap thermal on hand the model has no reason to over-build renewables, so the
+free mix curtails almost nothing. Force a large solar fleet and the picture
+changes: on sunny midday slices its output exceeds what demand and the battery can
+absorb, and the surplus is dumped — a positive `vBalance`. Adding storage reduces
+it, as energy is shifted to the evening; adding still more solar increases it.
+Curtailment appears only when renewables are pushed beyond what demand and
+flexibility can take up — which is why the fully renewable system of @sec-value in
+the next chapter is where it truly bites.
+:::
+
+## What you built
+
+Time turned a snapshot into a trajectory. You met the **horizon** and its
+milestones, the **two discount rates** and how the business and social cases
+diverge, **sub-annual** calendars and why resolution decides what is even
+visible, **vintages** as ageing fleets, and the pair — **storage** and
+**intermittent** generation — that exist only once the day has a shape, together
+with the **curtailment** that follows. @sec-regions adds space: several regions,
+trade between them, and where a new load wants to be.

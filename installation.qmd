@@ -66,17 +66,20 @@ One line installs everything — `pak`, the system-library guidance, all
 dependencies, and energyRt itself. Paste this into R:
 
 ```{r}
-source("https://raw.githubusercontent.com/optimal2050/energyRt/dev/inst/install.R")
-# install_energyRt()                  # released version
-install_energyRt(branch = "dev")      # development version
+source("https://raw.githubusercontent.com/optimal2050/energyRt/master/inst/install.R")
+# install_energyRt()                  # released version (default branch)
+install_energyRt(branch = "dev")      # development version -- use this for the course
 ```
 
 On Linux it prints the exact `sudo` command for any missing system libraries (it
 never runs `sudo` itself) — run that, then re-run `install_energyRt()`.
 
-For the training, use whichever the instructors announce: `install_energyRt()`
-follows the repository's default branch, and `branch = "dev"` picks up features
-that have not been released yet.
+For the training, install the **development** version with
+`install_energyRt(branch = "dev")`: it carries the features the exercises rely on
+(the YAML technology specifications, `add()`, and the WACC/SDR discounting). The
+exercises require **energyRt ≥ 0.80** — the top of each chapter runs
+`source("R/workshop-model.R")`, which checks your installed version and warns,
+before any exercise runs, if it is too old.
 
 Once it finishes, verify your setup in a fresh session:
 
@@ -127,6 +130,8 @@ deps <- c(
   "cli", "zoo", "registry", "options", "glue", "plyr",
   # suggested -- plots and reports (optional but recommended):
   "ggplot2", "patchwork", "knitr", "rmarkdown", "tinytex", "sf",
+  # optional -- the process-designer GUI (process_designer()):
+  "shiny", "DT",
   # optional -- remote solving on NEOS (see the NEOS section below):
   "httr2", "xml2", "base64enc"
 )

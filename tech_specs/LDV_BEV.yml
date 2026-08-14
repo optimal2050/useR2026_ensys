@@ -1,0 +1,142 @@
+techspec: 1
+class: technology
+name: LDV_BEV
+desc: Battery Electric Light Duty Vehicle
+units:
+  capacity: 1000 Vehicles
+  use: GWh
+  activity: million km, city
+  costs: MUSD
+cap2act: 12.1
+inputs:
+- comm: ELC
+  unit: GWh
+outputs:
+- comm: PLDVHWY
+  unit: MPKm
+  group: o
+- comm: PLDVCTY
+  unit: MPKm
+  group: o
+aux:
+- acomm: EV_CHARGING
+  unit: GWh
+efficiency:
+- comm: ELC
+  cinp2use: 1.0
+- vintage: '2025'
+  comm: PLDVHWY
+  use2cact: 6.475
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2025'
+  comm: PLDVCTY
+  use2cact: 7.194444
+  cact2cout: 3.18
+  share.up: 0.75
+- vintage: '2030'
+  comm: PLDVHWY
+  use2cact: 6.507375
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2030'
+  comm: PLDVCTY
+  use2cact: 7.230417
+  cact2cout: 3.18
+  share.up: 0.75
+- vintage: '2035'
+  comm: PLDVHWY
+  use2cact: 6.539912
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2035'
+  comm: PLDVCTY
+  use2cact: 7.266569
+  cact2cout: 3.18
+  share.up: 0.75
+- vintage: '2040'
+  comm: PLDVHWY
+  use2cact: 6.572611
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2040'
+  comm: PLDVCTY
+  use2cact: 7.302902
+  cact2cout: 3.18
+  share.up: 0.75
+- vintage: '2045'
+  comm: PLDVHWY
+  use2cact: 6.605474
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2045'
+  comm: PLDVCTY
+  use2cact: 7.339416
+  cact2cout: 3.18
+  share.up: 0.75
+- vintage: '2050'
+  comm: PLDVHWY
+  use2cact: 6.638502
+  cact2cout: 3.18
+  share.up: 0.25
+- vintage: '2050'
+  comm: PLDVCTY
+  use2cact: 7.376113
+  cact2cout: 3.18
+  share.up: 0.75
+aux_efficiency:
+- acomm: EV_CHARGING
+  comm: ELC
+  cinp2ainp: 1.0
+invcost:
+- vintage: '2025'
+  invcost: 13.244
+- vintage: '2030'
+  invcost: 11.9677396
+- vintage: '2035'
+  invcost: 11.9677396
+- vintage: '2040'
+  invcost: 11.9677396
+- vintage: '2045'
+  invcost: 11.9677396
+- vintage: '2050'
+  invcost: 11.9677396
+fixom:
+- fixom: 0.009
+vintages:
+- vintage: '2025'
+  end: 2029
+  olife: 15
+- vintage: '2030'
+  start: 2030
+  end: 2034
+  olife: 15
+- vintage: '2035'
+  start: 2035
+  end: 2039
+  olife: 15
+- vintage: '2040'
+  start: 2040
+  end: 2044
+  olife: 15
+- vintage: '2045'
+  start: 2045
+  end: 2049
+  olife: 15
+- vintage: '2050'
+  start: 2050
+  olife: 15
+capacity:
+- vintage: '2025'
+  year: 2025
+  stock: 457.354
+- vintage: '2025'
+  year: 2030
+  stock: 228.677
+- vintage: '2025'
+  year: 2035
+  stock: 114.3385
+- vintage: '2025'
+  year: 2040
+  stock: 0.0
+image: images/LDV-electric.png

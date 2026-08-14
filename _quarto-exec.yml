@@ -1,0 +1,16 @@
+# Local-only render profile: execute the exercise chapters for review.
+#
+#   quarto render --profile exec        # execute + build the book
+#   quarto preview --profile exec       # execute + live preview
+#
+# The committed _quarto.yml keeps `execute: eval: false`, so plain
+# `quarto render` (and the GitHub Pages CI, which has no energyRt/solver) is
+# unaffected — nothing to flip back manually.
+#
+# Setup chapters (installation.qmd, r-resources.qmd) keep their own
+# `execute: eval: false` headers, which override this profile, so they are NOT
+# executed here — only the exercises run.
+execute:
+  eval: true
+  warning: true
+  error: true   # don't halt on a failing chunk; render the error inline so it's visible

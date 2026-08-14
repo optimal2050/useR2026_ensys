@@ -11,6 +11,7 @@ project:
   render:
     - "*.qmd"
     - "!slides/"
+    - "!notes/"
   resources:
     - slides/builders.html
     - slides/builders_files/
@@ -27,11 +28,10 @@ book:
     - part: "Exercises"
       chapters:
         - 01-first-model.qmd
-        # - 02-commodities-supply-demand.qmd
-        # - 03-technologies.qmd
-        # - 04-time-and-storage.qmd
-        # - 05-utopia.qmd
-        # - 06-scenarios.qmd
+        - 02-time-resolution.qmd
+        - 03-regions-and-trade.qmd
+        - 04-special-processes.qmd
+        # - 05-policy-scenarios.qmd   # moved to notes/ (draft)
         # - 07-energy-rhapsody.qmd
   navbar:
     search: true
