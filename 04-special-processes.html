@@ -6,10 +6,8 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="author" content="Oleg Lugovoy, et al.">
-<meta name="dcterms.date" content="2026-08-14">
 
-<title>Energy System Modeling with R</title>
+<title>6&nbsp; Special cases of processes – Energy System Modeling with R</title>
 <style>
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
@@ -28,6 +26,41 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -38,7 +71,7 @@ ul.task-list li input[type="checkbox"] {
 <script src="site_libs/quarto-search/fuse.min.js"></script>
 <script src="site_libs/quarto-search/quarto-search.js"></script>
 <meta name="quarto:offset" content="./">
-<link href="./r-resources.html" rel="next">
+<link href="./03-regions-and-trade.html" rel="prev">
 <script src="site_libs/quarto-html/quarto.js" type="module"></script>
 <script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
 <script src="site_libs/quarto-html/popper.min.js"></script>
@@ -122,7 +155,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./index.html">Preface</a></li></ol></nav>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./01-first-model.html">Exercises</a></li><li class="breadcrumb-item"><a href="./04-special-processes.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Special cases of processes</span></a></li></ol></nav>
         <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
         </a>
     </div>
@@ -136,7 +169,7 @@ ul.task-list li input[type="checkbox"] {
     <ul class="list-unstyled mt-1">
         <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./index.html" class="sidebar-item-text sidebar-link active">
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
  <span class="menu-text">Preface</span></a>
   </div>
 </li>
@@ -181,7 +214,7 @@ ul.task-list li input[type="checkbox"] {
 </li>
           <li class="sidebar-item">
   <div class="sidebar-item-container"> 
-  <a href="./04-special-processes.html" class="sidebar-item-text sidebar-link">
+  <a href="./04-special-processes.html" class="sidebar-item-text sidebar-link active">
  <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Special cases of processes</span></span></a>
   </div>
 </li>
@@ -197,40 +230,27 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">Table of contents</h2>
    
   <ul>
-  <li><a href="#preface" id="toc-preface" class="nav-link active" data-scroll-target="#preface">Preface</a>
-  <ul class="collapse">
-  <li><a href="#slides" id="toc-slides" class="nav-link" data-scroll-target="#slides">Slides</a></li>
-  <li><a href="#questions-and-discussion" id="toc-questions-and-discussion" class="nav-link" data-scroll-target="#questions-and-discussion">Questions and discussion</a></li>
-  </ul></li>
+  <li><a href="#sec-electrolyser" id="toc-sec-electrolyser" class="nav-link active" data-scroll-target="#sec-electrolyser"><span class="header-section-number">6.1</span> Electrolyser — electricity → hydrogen</a></li>
+  <li><a href="#sec-blastfurnace" id="toc-sec-blastfurnace" class="nav-link" data-scroll-target="#sec-blastfurnace"><span class="header-section-number">6.2</span> Blast furnace — iron &amp; steel</a></li>
+  <li><a href="#sec-ldv" id="toc-sec-ldv" class="nav-link" data-scroll-target="#sec-ldv"><span class="header-section-number">6.3</span> Light-duty vehicles — fuel → mobility</a></li>
+  <li><a href="#sec-build" id="toc-sec-build" class="nav-link" data-scroll-target="#sec-build"><span class="header-section-number">6.4</span> Build your own</a></li>
+  <li><a href="#where-this-connects" id="toc-where-this-connects" class="nav-link" data-scroll-target="#where-this-connects"><span class="header-section-number">6.5</span> Where this connects</a></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
-<header id="title-block-header" class="quarto-title-block default">
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./01-first-model.html">Exercises</a></li><li class="breadcrumb-item"><a href="./04-special-processes.html"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Special cases of processes</span></a></li></ol></nav>
 <div class="quarto-title">
-<h1 class="title">Energy System Modeling with R</h1>
-<p class="subtitle lead">A post-conference online series following useR! 2026</p>
+<h1 class="title"><span id="sec-processes" class="quarto-section-identifier"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Special cases of processes</span></span></h1>
 </div>
 
 
 
 <div class="quarto-title-meta">
 
-    <div>
-    <div class="quarto-title-meta-heading">Author</div>
-    <div class="quarto-title-meta-contents">
-             <p>Oleg Lugovoy, et al. </p>
-          </div>
-  </div>
     
-    <div>
-    <div class="quarto-title-meta-heading">Published</div>
-    <div class="quarto-title-meta-contents">
-      <p class="date">August 14, 2026</p>
-    </div>
-  </div>
   
     
   </div>
@@ -240,73 +260,154 @@ ul.task-list li input[type="checkbox"] {
 </header>
 
 
-<section id="preface" class="level1 unnumbered">
-<h1 class="unnumbered">Preface</h1>
-<p>This training introduces energy system modeling in R with the <a href="https://github.com/optimal2050/energyRt">energyRt</a> package — energy system modeling with a familiar R workflow: you describe the system as R objects, energyRt compiles and solves the optimization model on one of several mathematical-programming <strong>backends</strong> (GLPK, Julia/JuMP, Python/Pyomo, or GAMS), and results come back as tidy tables.</p>
-<p>New to R, or returning after a while? <a href="./r-resources.html">R: setup and resources</a> collects the essentials — where to get R and an IDE, a couple of short introductions, the packages worth having before we start, and the cheatsheets to keep open during the sessions.</p>
-<p>The <a href="./installation.html">Installation</a> chapter then walks through installing the energyRt package and at least one solver backend, so your machine is ready for the hands-on sessions.</p>
-<p>Once you are set up, <a href="./01-first-model.html">Your first energy model</a> starts from the smallest model that can exist — so small it does not work — and grows it one object at a time until it burns coal and emits CO<sub>2</sub>. One region, one year, one time slice: nothing competing for attention with the energy balance itself.</p>
-<section id="slides" class="level2">
-<h2 class="anchored" data-anchor-id="slides">Slides</h2>
-<p><strong><a href="slides/builders.html">Building blocks of an energyRt model »</a></strong></p>
-<p>A reference deck covering the <code>new*()</code> constructors and the system around them: where objects live in time (calendars, horizons) and space (regions, geoscales), commodities in depth, vintages and clusters, how a description becomes numbers, how scenarios are composed, what to do about large models, and how results are read. Every diagram in it is generated by the package itself.</p>
-<p>It is used in the sessions and written to be browsable afterwards — features that are experimental or still in development are marked as such, so it doubles as an honest map of where the project currently stands.</p>
-</section>
-<section id="questions-and-discussion" class="level2">
-<h2 class="anchored" data-anchor-id="questions-and-discussion">Questions and discussion</h2>
-<p>Questions between sessions are welcome — and best asked in the open, where the answer helps everyone else too.</p>
-<p><strong>Ask here:</strong> <a href="https://mstdn.science/@optimal2050/117049007107822486">the course Q&amp;A thread on Mastodon</a></p>
-<p>Reply to that post with anything: an install that will not cooperate, a modeling question, a result you cannot explain, or something you built and want to show. Beginner questions are explicitly welcome — that is what the thread is for.</p>
-<div class="callout callout-style-default callout-note callout-titled">
-<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout callout-style-simple callout-important">
+<div class="callout-body d-flex">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
-<div class="callout-title-container flex-fill">
-<span class="screen-reader-only">Note</span>No Mastodon account? It takes about a minute
+<div class="callout-body-container">
+<p><strong>Work in progress.</strong> This chapter collects processes with a richer input–output structure than the power plants of chapters 1–3. The electrolyser and vehicle examples now load <strong>real technology specifications</strong> from <code>tech_specs/</code>; the blast furnace is still a structural sketch, and every spec should be run through <code>tech_spec_issues()</code> before it is used in a solving model.</p>
 </div>
-<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
 </div>
-<div id="callout-1" class="callout-1-contents callout-collapse collapse">
-<div class="callout-body-container callout-body">
-<p>Mastodon is a decentralized network: you register on any one server and can follow, reply to, and interact with people on all the others. If you have no preference, <a href="https://mastodon.social/"><strong>mastodon.social</strong></a> is the largest general server and a fine default — sign up there and you can reply to the thread straight away.</p>
-<p>Two things that trip people up when they arrive:</p>
+</div>
+<p>So far every technology took one fuel and made one product. Real conversion processes are messier: they consume several inputs, emit or co-produce several outputs, and often serve a <strong>service demand</strong> (tonnes of steel, vehicle-kilometres) rather than an energy commodity. Three recurring patterns cover most of it.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">source</span>(<span class="st">"R/workshop-model.R"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Two ideas do the heavy lifting throughout:</p>
 <ul>
-<li>To find us from your own server, search for the <strong>full handle</strong> <code>@optimal2050@mstdn.science</code> — not just <code>optimal2050</code>, which only searches your own server.</li>
-<li>Follow <a href="https://mstdn.science/@optimal2050"><strong><span class="citation" data-cites="optimal2050">@optimal2050</span><span class="citation" data-cites="mstdn.science">@mstdn.science</span></strong></a> rather than relying on the hashtag. Hashtag timelines only show posts your server has already seen, so following the account is what reliably brings the updates to you.</li>
+<li><strong>The conversion chain.</strong> Inside a technology, <code>input → use → activity → output</code>, governed by three coefficient sets in <code>ceff</code>: <code>cinp2use</code> (fuel → common energy basis), <code>use2cact</code> (→ the central <em>activity</em> variable that all costs and capacity attach to), and <code>cact2cout</code> (activity → each output). All default to 1; unit conversions live here.</li>
+<li><strong>Auxiliary flows</strong> (<code>aux</code> + <code>aeff</code>). Anything that rides <em>alongside</em> the main conversion — an emission produced, a by-product recovered, water consumed — is an aux flow, linked by a coefficient named <code>&lt;driver&gt;2a&lt;out|inp&gt;</code> (e.g. <code>act2ainp</code> = consumed per unit activity, <code>cout2aout</code> = produced per unit output).</li>
 </ul>
-<p>Tag your own posts about the course with <strong>#optimal2050</strong> so others can find them.</p>
-</div>
-</div>
-</div>
-<!-- The rest of the tutorial is hands-on, in two parts. **Build UTOPIA** -->
-<!-- (@sec-first-model – @sec-utopia): solve a first tiny model end to end, then -->
-<!-- grow the classic UTOPIA electricity model brick by brick — commodities, supply -->
-<!-- and demand, technologies in depth (with levelized costs and reports), time -->
-<!-- slices, weather and storage — until it assembles into the exact model that -->
-<!-- ships with energyRt as the `utopia_modules` kit. **Use UTOPIA** -->
-<!-- (@sec-scenarios): run policy scenarios (CO~2~ cap, carbon tax, renewable -->
-<!-- share, nuclear moratorium) and compare them. Each chapter ends with exercises; -->
-<!-- worked solutions are folded underneath. -->
-<!-- The [intro slides](slides/intro.html) give the 10-minute framing (what an -->
-<!-- energy-system model is, and how the day is structured); the mechanics live here -->
-<!-- in the tutorial. -->
-<div class="callout callout-style-default callout-tip callout-titled">
-<div class="callout-header d-flex align-content-center">
+<div class="callout callout-style-simple callout-note">
+<div class="callout-body d-flex">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
 </div>
-<div class="callout-title-container flex-fill">
-Tip
+<div class="callout-body-container">
+<p><strong>Technology specifications.</strong> The processes below are stored as YAML <strong>techspec</strong> files under <code>tech_specs/</code>. Read one with <code>read_techspec()</code>, check it with <code>tech_spec_issues()</code>, and build the <code>newTechnology()</code> object with <code>tech_from_spec()</code> — the same round-trip the interactive <strong>process-designer</strong> GUI uses.</p>
 </div>
 </div>
-<div class="callout-body-container callout-body">
-<p>The installation chapter shows every command but does <strong>not</strong> run any of them at render time — copy each command into your own R session to execute it.</p>
 </div>
+<p>A recurring trap: a <strong>service demand</strong> needs its own commodity <em>before</em> a <code>newDemand()</code> can reference it, and its <code>unit</code>/<code>timeframe</code> must match. Model the service (hydrogen, steel, vehicle-km) as a <code>newCommodity</code>, have the process produce it, and pull it with a demand.</p>
+<section id="sec-electrolyser" class="level2" data-number="6.1">
+<h2 data-number="6.1" class="anchored" data-anchor-id="sec-electrolyser"><span class="header-section-number">6.1</span> Electrolyser — electricity → hydrogen</h2>
+<p>The <strong>flexible load</strong> of <a href="03-regions-and-trade.html#sec-siting" class="quarto-xref"><span>Section 5.4</span></a>, built properly: a PEM electrolyser that consumes electricity, produces hydrogen, and recovers heat as a co-product. The spec is <code>tech_specs/FPEM100.yml</code> (a DEA-catalogue 100 MW unit, in GWh), with efficiency that <strong>improves by vintage</strong> (see <a href="02-time-resolution.html#sec-vintages" class="quarto-xref"><span>Section 4.4</span></a>).</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>ELY <span class="ot">&lt;-</span> <span class="fu">tech_from_spec</span>(<span class="st">"tech_specs/FPEM100.yml"</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">draw</span>(ELY) <span class="co"># electricity in; hydrogen and heat out</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
-
-
+<p><em>Learning goal:</em> a single-input, multi-output conversion (H₂ + heat) with vintaged efficiency; adding <strong>water</strong> as a consumed aux (<code>act2ainp</code>) is a one-line extension. Reuse it as the time-flexible load whose siting follows the renewables.</p>
+<p><em>Exercises (to finish):</em> <strong>4.1</strong> <code>draw()</code> the electrolyser and read its vintaged <code>cact2cout</code> for H₂; <strong>4.2</strong> screen its LCOE with <code>levcost()</code> at a few electricity prices; <strong>4.3</strong> drop it into the <a href="03-regions-and-trade.html#sec-siting" class="quarto-xref"><span>Section 5.4</span></a> model as the flexible load and confirm it sites with the renewables.</p>
 </section>
+<section id="sec-blastfurnace" class="level2" data-number="6.2">
+<h2 data-number="6.2" class="anchored" data-anchor-id="sec-blastfurnace"><span class="header-section-number">6.2</span> Blast furnace — iron &amp; steel</h2>
+<p>A genuinely multi-input, multi-output process: iron ore, coke, and fluxes in; pig iron out, with blast-furnace gas and slag as co-products and process CO<sub>2</sub> from the coke. This one is still a <strong>structural sketch</strong> — adapt the coefficients from the IDEEA iron-and-steel model (<code>WRI/IDEEA-Internal-Repo/IDEEA-IIS.qmd</code>, which defines BF/BOF/EAF/DRI).</p>
+<p><em>Learning goal:</em> several inputs, some in an <strong>input group</strong> with shares (ore + scrap), <strong>combustion</strong> on the reductant to book process CO<sub>2</sub>, and <strong>co-products as aux</strong> (<code>cout2aout</code>); the chain closes on a <code>STEEL</code> service demand.</p>
+<div class="callout callout-style-simple callout-note">
+<div class="callout-body d-flex">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-body-container">
+<p>Input <strong>groups</strong> (interchangeable inputs bounded by shares) are illustrated here but are <strong>not yet solvable</strong> in the shipped model — keep the blast furnace as a <em>structure</em> exercise (<code>draw()</code>, read the RES) rather than a scenario that must solve, until the grouped input–output balance fix lands.</p>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="co"># </span><span class="al">TODO</span><span class="co">: coefficients / costs from the IDEEA I&amp;S model</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>IRON <span class="ot">&lt;-</span> <span class="fu">newCommodity</span>(<span class="st">"IRON"</span>, <span class="at">unit =</span> <span class="st">"Mt"</span>, <span class="at">timeframe =</span> <span class="st">"ANNUAL"</span>)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>BF <span class="ot">&lt;-</span> <span class="fu">newTechnology</span>(</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">name   =</span> <span class="st">"BF"</span>,</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">desc   =</span> <span class="st">"Blast furnace"</span>,</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">input  =</span> <span class="fu">list</span>(</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">comm       =</span> <span class="fu">c</span>(<span class="st">"IRON_ORE"</span>, <span class="st">"COKE"</span>, <span class="st">"SCRAP"</span>),</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">group      =</span> <span class="fu">c</span>(<span class="st">"i"</span>, <span class="cn">NA</span>, <span class="st">"i"</span>),      <span class="co"># ore + scrap interchangeable</span></span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">unit       =</span> <span class="fu">c</span>(<span class="st">"Mt"</span>, <span class="st">"PJ"</span>, <span class="st">"Mt"</span>),</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">combustion =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">1</span>, <span class="dv">0</span>)            <span class="co"># coke burns -&gt; CO2</span></span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">output =</span> <span class="fu">list</span>(<span class="at">comm =</span> <span class="st">"IRON"</span>, <span class="at">unit =</span> <span class="st">"Mt"</span>),</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">aux    =</span> <span class="fu">list</span>(<span class="at">acomm =</span> <span class="fu">c</span>(<span class="st">"BF_GAS"</span>, <span class="st">"SLAG"</span>), <span class="at">unit =</span> <span class="fu">c</span>(<span class="st">"PJ"</span>, <span class="st">"Mt"</span>)),</span>
+<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">aeff   =</span> <span class="fu">data.frame</span>(</span>
+<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a>    <span class="at">comm     =</span> <span class="fu">c</span>(<span class="st">"IRON"</span>, <span class="st">"IRON"</span>),</span>
+<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    <span class="at">acomm    =</span> <span class="fu">c</span>(<span class="st">"BF_GAS"</span>, <span class="st">"SLAG"</span>),</span>
+<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">cout2aout =</span> <span class="fu">c</span>(<span class="fl">3.25</span>, <span class="fl">0.20</span>)          <span class="co"># co-product yields per unit iron</span></span>
+<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>  <span class="at">ceff   =</span> <span class="fu">data.frame</span>(</span>
+<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">comm      =</span> <span class="fu">c</span>(<span class="st">"IRON_ORE"</span>, <span class="st">"COKE"</span>, <span class="st">"SCRAP"</span>),</span>
+<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">cinp2use  =</span> <span class="fu">c</span>(<span class="cn">NA</span>, <span class="fl">9.30</span>, <span class="cn">NA</span>),</span>
+<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>    <span class="at">cinp2ginp =</span> <span class="fu">c</span>(<span class="fl">1.2</span>, <span class="cn">NA</span>, <span class="fl">0.155</span>)</span>
+<span id="cb3-24"><a href="#cb3-24" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb3-25"><a href="#cb3-25" aria-hidden="true" tabindex="-1"></a>  <span class="at">olife  =</span> <span class="dv">20</span>L</span>
+<span id="cb3-26"><a href="#cb3-26" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb3-27"><a href="#cb3-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-28"><a href="#cb3-28" aria-hidden="true" tabindex="-1"></a><span class="fu">draw</span>(BF) <span class="co"># ore + coke in; iron, blast-furnace gas and slag out</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p><em>Exercises (to finish):</em> <strong>4.4</strong> <code>draw()</code> the furnace and trace ore/coke in, iron/gas/slag out; <strong>4.5</strong> add a scrap-fed electric-arc route (EAF, electricity as aux via <code>cout2ainp</code>) and compare their CO<sub>2</sub> per tonne — a preview of decarbonising heavy industry.</p>
+</section>
+<section id="sec-ldv" class="level2" data-number="6.3">
+<h2 data-number="6.3" class="anchored" data-anchor-id="sec-ldv"><span class="header-section-number">6.3</span> Light-duty vehicles — fuel → mobility</h2>
+<p>A process whose output is a <strong>service</strong>: passenger-kilometres, not energy. Three real specs ship in <code>tech_specs/</code> (converted to GWh): a battery-electric, a diesel, and a gasoline-hybrid car fleet, each producing highway and city passenger-km (<code>PLDVHWY</code> / <code>PLDVCTY</code>) from its fuel.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>LDV_BEV <span class="ot">&lt;-</span> <span class="fu">tech_from_spec</span>(<span class="st">"tech_specs/LDV_BEV.yml"</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>LDV_DSL <span class="ot">&lt;-</span> <span class="fu">tech_from_spec</span>(<span class="st">"tech_specs/LDV_DSL.yml"</span>)</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>LDV_HYB <span class="ot">&lt;-</span> <span class="fu">tech_from_spec</span>(<span class="st">"tech_specs/LDV_HYB.yml"</span>)</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a><span class="fu">draw</span>(LDV_BEV) <span class="co"># electricity in; highway + city passenger-km out</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p><em>Learning goal:</em> a <strong>service-demand</strong> commodity in <code>MPKm</code>, the fuel-economy conversion carried on <code>use2cact</code>/<code>cap2act</code> so energy, activity and capacity agree, and a highway/city output <strong>split by share</strong>.</p>
+<p><em>Exercises (to finish):</em> <strong>4.6</strong> build the three fleets, <code>draw()</code> each, and check the energy identity <code>vTechInp * cinp2use == vTechOut / (use2cact * cact2cout)</code>; <strong>4.7</strong> give them a shared <code>PLDVHWY</code>/<code>PLDVCTY</code> demand and let the model choose the fleet mix under a fuel price and, later, a carbon price.</p>
+</section>
+<section id="sec-build" class="level2" data-number="6.4">
+<h2 data-number="6.4" class="anchored" data-anchor-id="sec-build"><span class="header-section-number">6.4</span> Build your own</h2>
+<p>Three processes, three diagrams, no code — your turn to turn each picture into a technology. Build it by hand (<code>newTechnology()</code>, or a YAML techspec like those in <code>tech_specs/</code>) or, more easily, with the interactive <strong>process designer</strong>, which lets you wire ports and blocks visually and exports a validated techspec:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">process_designer</span>() <span class="co"># launch the Shiny techspec editor</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="callout callout-style-simple callout-note">
+<div class="callout-body d-flex">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-body-container">
+<p>The process designer’s <strong>online / AI-assisted</strong> features (auto-drafting a spec from a description or a diagram) need API keys that are <strong>not set up for the course yet</strong> — we will cover those next session. The manual ports-and-blocks editor, and everything in these exercises, works without them.</p>
+</div>
+</div>
+</div>
+<p><strong>4.8 — An alkaline electrolyser.</strong> Build the alkaline counterpart to the PEM electrolyser of <a href="#sec-electrolyser" class="quarto-xref"><span>Section 6.1</span></a> from the diagram below: electricity in, hydrogen out, with its own efficiency, capital cost and (optionally) a water input. Give it vintages so its efficiency improves over time, then compare its <code>levcost()</code> with <code>FPEM100</code>’s.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="tech_specs/images/electrolyzer_alkaline.png" class="img-fluid figure-img" style="width:55.0%"></p>
+<figcaption>Alkaline electrolyser.</figcaption>
+</figure>
+</div>
+<p><strong>4.9 — Power-to-liquid e-synfuel (RWGS + Fischer–Tropsch).</strong> A multi-step power-to-liquid route: hydrogen and captured CO<sub>2</sub> are combined — reverse water-gas shift to syngas, then Fischer–Tropsch synthesis — into a synthetic liquid fuel, with heat and tail gas as co-products. Build it as <strong>one technology with several inputs and several outputs</strong>: <code>H2</code> and <code>CO2</code> in, the e-fuel out, heat/tail-gas as aux (<code>cout2aout</code>). It is the natural downstream of the electrolyser — the hydrogen it consumes is what <a href="#sec-electrolyser" class="quarto-xref"><span>Section 6.1</span></a> produces.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="tech_specs/images/RWGS_FT_eSYN.png" class="img-fluid figure-img" style="width:60.0%"></p>
+<figcaption>Reverse water-gas shift + Fischer–Tropsch e-synfuel process.</figcaption>
+</figure>
+</div>
+<p><strong>4.10 — A plug-in hybrid vehicle (PHEV).</strong> A dual-fuel vehicle that draws <strong>both</strong> electricity and gasoline. Starting from the <code>LDV_BEV</code> and <code>LDV_HYB</code> specs in <code>tech_specs/</code>, build a PHEV that consumes the two fuels as an <strong>input group</strong> with a share split, still producing <code>PLDVHWY</code>/<code>PLDVCTY</code> passenger-km, and add it to the fleet-mix comparison of exercise 4.7.</p>
+<div class="quarto-figure quarto-figure-center">
+<figure class="figure">
+<p><img src="tech_specs/images/LDV-PHEV.png" class="img-fluid figure-img" style="width:55.0%"></p>
+<figcaption>Plug-in hybrid light-duty vehicle.</figcaption>
+</figure>
+</div>
+</section>
+<section id="where-this-connects" class="level2" data-number="6.5">
+<h2 data-number="6.5" class="anchored" data-anchor-id="where-this-connects"><span class="header-section-number">6.5</span> Where this connects</h2>
+<ul>
+<li>The <strong>electrolyser</strong> is the flexible load of <a href="03-regions-and-trade.html#sec-siting" class="quarto-xref"><span>Section 5.4</span></a> — the same object, now with its real conversion and vintaged efficiency.</li>
+<li><strong>Groups + shares</strong> (blast-furnace fuels, vehicle highway/city split) are the structural step beyond chapters 1–3; note the solvability caveat above.</li>
+<li>Everything here is pure LP and solves on <strong>GLPK</strong> once the specs are validated and wired to demands — none of it needs another backend.</li>
+</ul>
+<p><em>To be completed with worked, solvable solutions before the session — the process-designer GUI builds and edits these specs interactively.</em></p>
+
+
 </section>
 
 </main> <!-- /main -->
@@ -712,11 +813,11 @@ Tip
   </script>
 <nav class="page-navigation">
   <div class="nav-page nav-page-previous">
+      <a href="./03-regions-and-trade.html" class="pagination-link" aria-label="Regions and trade">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Regions and trade</span></span>
+      </a>          
   </div>
   <div class="nav-page nav-page-next">
-      <a href="./r-resources.html" class="pagination-link" aria-label="R: setup and resources">
-        <span class="nav-page-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">R: setup and resources</span></span> <i class="bi bi-arrow-right-short"></i>
-      </a>
   </div>
 </nav>
 </div> <!-- /content -->
