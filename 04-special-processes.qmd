@@ -5,14 +5,6 @@ editor_options:
 ---
 # Special cases of processes {#sec-processes}
 
-::: {.callout-important appearance="simple"}
-**Work in progress.** This chapter collects processes with a richer input–output
-structure than the power plants of chapters 1–3. The electrolyser and vehicle
-examples now load **real technology specifications** from `tech_specs/`; the blast
-furnace is still a structural sketch, and every spec should be run through
-`tech_spec_issues()` before it is used in a solving model.
-:::
-
 So far every technology took one fuel and made one product. Real conversion
 processes are messier: they consume several inputs, emit or co-produce several
 outputs, and often serve a **service demand** (tonnes of steel, vehicle-kilometres)
@@ -73,9 +65,9 @@ it sites with the renewables.
 
 A genuinely multi-input, multi-output process: iron ore, coke, and fluxes in; pig
 iron out, with blast-furnace gas and slag as co-products and process CO~2~ from the
-coke. This one is still a **structural sketch** — adapt the coefficients from the
-IDEEA iron-and-steel model (`WRI/IDEEA-Internal-Repo/IDEEA-IIS.qmd`, which defines
-BF/BOF/EAF/DRI).
+coke.
+
+![Iron and Steel / Blast furnace](tech_specs/images/IIS-blast-furnance.png){fig-align="center"}
 
 *Learning goal:* several inputs, some in an **input group** with shares
 (ore + scrap), **combustion** on the reductant to book process CO~2~, and
@@ -90,7 +82,7 @@ solve, until the grouped input–output balance fix lands.
 
 ```{r}
 #| eval: false
-# TODO: coefficients / costs from the IDEEA I&S model
+
 IRON <- newCommodity("IRON", unit = "Mt", timeframe = "ANNUAL")
 
 BF <- newTechnology(
