@@ -73,13 +73,6 @@ coke.
 (ore + scrap), **combustion** on the reductant to book process CO~2~, and
 **co-products as aux** (`cout2aout`); the chain closes on a `STEEL` service demand.
 
-::: {.callout-note appearance="simple"}
-Input **groups** (interchangeable inputs bounded by shares) are illustrated here
-but are **not yet solvable** in the shipped model — keep the blast furnace as a
-*structure* exercise (`draw()`, read the RES) rather than a scenario that must
-solve, until the grouped input–output balance fix lands.
-:::
-
 ```{r}
 #| eval: false
 
@@ -192,7 +185,9 @@ the fleet-mix comparison of exercise 4.7.
 - The **electrolyser** is the flexible load of @sec-siting — the same object, now
   with its real conversion and vintaged efficiency.
 - **Groups + shares** (blast-furnace fuels, vehicle highway/city split) are the
-  structural step beyond chapters 1–3; note the solvability caveat above.
+  structural step beyond chapters 1–3 — and, since the grouped input/output
+  balance now solves on GLPK, the blast furnace can be *run*, not just drawn,
+  once its parameters are in.
 - Everything here is pure LP and solves on **GLPK** once the specs are validated
   and wired to demands — none of it needs another backend.
 
