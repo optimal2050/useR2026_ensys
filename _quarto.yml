@@ -1,5 +1,16 @@
 project:
   type: book
+  # BUILT AND PUBLISHED LOCALLY, not by CI. The chapters and decks need energyRt,
+  # a solver and the converted PyPSA-Eur datasets, none of which the GitHub
+  # runner has -- see .github/workflows/publish.yml, whose push trigger is
+  # deliberately disabled.
+  #
+  #   quarto render slides/<deck>.qmd   # decks first: they execute and freeze
+  #   quarto publish gh-pages           # builds the book and pushes the output
+  #
+  # `quarto publish` renders into _book (gitignored) and pushes only the result
+  # to the gh-pages branch, which is what Pages already serves. Nothing generated
+  # is committed to main.
   # Slide decks are a SEPARATE revealjs render, shipped with the book as static
   # resources. They are pre-rendered locally and committed, because they execute
   # energyRt + a solver -- which the GitHub Pages workflow does not install.
@@ -15,6 +26,10 @@ project:
   resources:
     - slides/builders.html
     - slides/builders_files/
+    - slides/real-model.html
+    - slides/real-model_files/
+    - slides/pypsa-replication.html
+    - slides/pypsa-replication_files/
 
 book:
   title: "Energy System Modeling with R"
@@ -32,7 +47,12 @@ book:
         - 03-regions-and-trade.qmd
         - 04-special-processes.qmd
         # - 05-policy-scenarios.qmd   # moved to notes/ (draft)
+        - 05-electric-vehicles.qmd
+        - 06-real-model.qmd
         # - 07-energy-rhapsody.qmd
+    - part: "Case study"
+      chapters:
+        - 07-pypsa-replication.qmd
   navbar:
     search: true
     collapse: true

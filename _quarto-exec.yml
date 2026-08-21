@@ -4,8 +4,17 @@
 #   quarto preview --profile exec       # execute + live preview
 #
 # The committed _quarto.yml keeps `execute: eval: false`, so plain
-# `quarto render` (and the GitHub Pages CI, which has no energyRt/solver) is
-# unaffected — nothing to flip back manually.
+# `quarto render` — which is what `quarto publish gh-pages` runs — is
+# unaffected. Nothing to flip back manually.
+#
+# CAUTION on cost. This profile executes every exercise chunk, and the chapters
+# no longer solve toy models: the full-year Belgium copperplate in
+# 06-real-model.qmd is ~473,000 variables and about 4.5 minutes per solve, and
+# that chapter solves several times. Expect tens of minutes, not seconds. Use it
+# to REVIEW a chapter, not as the normal render, and prefer rendering the single
+# file you are working on:
+#
+#   quarto render 06-real-model.qmd --profile exec
 #
 # Setup chapters (installation.qmd, r-resources.qmd) keep their own
 # `execute: eval: false` headers, which override this profile, so they are NOT

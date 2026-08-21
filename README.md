@@ -68,25 +68,44 @@ on any server can reply. For course updates, follow
 [**@optimal2050@mstdn.science**](https://mstdn.science/@optimal2050) and tag your
 own posts **#optimal2050**.
 
-## Building the site locally
+## Building and publishing
+
+**The site is built and published from a workstation, not by CI.** The chapters
+and decks need energyRt, a solver (Julia/HiGHS or GLPK) and the converted
+PyPSA-Eur datasets; a GitHub runner has none of them, so a CI build would render
+the prose without any of the numbers. The workflow's push trigger is disabled and
+it is kept for manual dispatch only.
 
 ```bash
-quarto render                       # builds the book into _book/
+# 1. rebuild any deck whose source changed -- decks EXECUTE (they solve)
+quarto render slides/real-model.qmd
+quarto render slides/pypsa-replication.qmd
+quarto render slides/builders.qmd
+
+# 2. build the book and push it to gh-pages
+quarto publish gh-pages
 ```
 
-The slide deck is a **separate revealjs render**, shipped with the book as a
-pre-rendered static resource — it executes energyRt and a solver, which the
-GitHub Pages workflow does not install. Rebuild it locally when its source
-changes:
+`quarto publish` renders into `_book/` (gitignored) and pushes only the result to
+the `gh-pages` branch, which is what Pages serves. Nothing generated is committed
+to `main` — except the decks, which are committed as pre-rendered static
+resources because the book itself does not execute.
+
+To build without publishing, `quarto render` alone is enough.
+
+### Executing the exercises
+
+The committed configuration keeps `execute: eval: false`, so a normal render is
+fast and needs no solver. To actually run the exercise chunks while reviewing a
+chapter:
 
 ```bash
-quarto render slides/builders.qmd   # 1. rebuild the deck
-quarto render                       # 2. rebuild the book, copying it in
+quarto render 06-real-model.qmd --profile exec
 ```
 
-Publishing is automatic: pushing to `main` triggers
-[`.github/workflows/publish.yml`](.github/workflows/publish.yml), which renders
-the book and deploys it to GitHub Pages.
+Be aware of the cost: the full-year Belgium copperplate is ~473,000 variables and
+about 4.5 minutes per solve, and that chapter solves several times. Render the
+single file you are working on rather than the whole book.
 
 ## An open work in progress
 

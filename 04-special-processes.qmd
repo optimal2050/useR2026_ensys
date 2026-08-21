@@ -42,12 +42,12 @@ it, and pull it with a demand.
 
 The **flexible load** of @sec-siting, built properly: a PEM electrolyser that
 consumes electricity, produces hydrogen, and recovers heat as a co-product. The
-spec is `tech_specs/FPEM100.yml` (a DEA-catalogue 100 MW unit, in GWh), with
+spec is `tech_specs/PEM100.yml` (a DEA-catalogue 100 MW unit, in GWh), with
 efficiency that **improves by vintage** (see @sec-vintages).
 
 ```{r}
 #| eval: false
-ELY <- tech_from_spec("tech_specs/FPEM100.yml")
+ELY <- tech_from_spec("tech_specs/PEM100.yml")
 
 draw(ELY) # electricity in; hydrogen and heat out
 ```

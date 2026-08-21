@@ -75,11 +75,22 @@ On Linux it prints the exact `sudo` command for any missing system libraries (it
 never runs `sudo` itself) — run that, then re-run `install_energyRt()`.
 
 For the training, install the **development** version with
-`install_energyRt(branch = "dev")`: it carries the features the exercises rely on
-(the YAML technology specifications, `add()`, and the WACC/SDR discounting). The
-exercises require **energyRt ≥ 0.80** — the top of each chapter runs
+`install_energyRt(branch = "dev")`: it carries the features the exercises rely on.
+The exercises require **energyRt ≥ 0.85** — the top of each chapter runs
 `source("R/workshop-model.R")`, which checks your installed version and warns,
 before any exercise runs, if it is too old.
+
+0.85 is not an arbitrary floor. Several chapters use things that arrived in it:
+
+-   the **three-role storage** — `@input`, `@storage` and `@output` may each name
+    a different commodity, which is what lets a vehicle be one object in
+    @sec-ev rather than a storage plus two technologies;
+-   **`storage_duration()`**, which splits a storage level into how long the
+    energy actually sits there;
+-   a storage capacity read as a **rate** (`cap2act`), so `cap.up = 7` means
+    7 kW on any calendar;
+-   `draw()` and `autoplot()` fixes for converted models that span many regions,
+    used throughout @sec-realmodel and @sec-replication.
 
 Once it finishes, verify your setup in a fresh session:
 

@@ -1,6 +1,18 @@
+# MANUAL ONLY -- the book is built and published from a workstation.
+#
+# WHY. The chapters and slide decks now need energyRt, a solver (Julia/HiGHS or
+# GLPK) and the converted PyPSA-Eur datasets. This runner has none of them, so a
+# CI build would render the prose without any of the numbers and then overwrite a
+# good local publish with it. The push trigger is deliberately removed; the job is
+# kept for the rare case where a prose-only rebuild is genuinely wanted.
+#
+# To publish, from the repo root:
+#
+#   quarto render slides/real-model.qmd          # 1. decks, locally (they solve)
+#   quarto render slides/pypsa-replication.qmd
+#   quarto publish gh-pages                      # 2. builds and pushes the book
+#
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 name: Publish to GitHub Pages

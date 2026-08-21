@@ -14,3 +14,9 @@ _book/
 # leaving the published deck unable to initialise.
 /notes/
 /tmp/
+
+# Solver working directories. `solve_scen()` writes `scenarios/<name>/` relative
+# to the working directory, so rendering a slide deck that solves leaves one in
+# slides/ (3.6 MB from the two decks). Deliberately NOT anchored with a leading
+# slash: these can appear wherever a chunk happens to solve.
+scenarios/

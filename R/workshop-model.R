@@ -6,7 +6,7 @@
 # The chapters are written against this version. Bump it whenever the course
 # starts to rely on something newer, so participants on a stale install are
 # told at the top of the session rather than by a confusing error mid-chapter.
-WS_ENERGYRT_MIN <- "0.80.3.9000"
+WS_ENERGYRT_MIN <- "0.85.0"
 
 #' Check the installed energyRt against the version the workshop needs.
 #'

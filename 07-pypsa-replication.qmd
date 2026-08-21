@@ -1,0 +1,370 @@
+---
+output: html_document
+editor_options:
+  chunk_output_type: inline
+---
+# Replication of PyPSA-Eur in energyRt {#sec-replication}
+
+This chapter is a case study rather than an exercise. It takes a model built in
+another language, by another team, for another purpose, and rebuilds it in
+energyRt — then checks whether the rebuilt model does the same arithmetic.
+
+```{r}
+library(energyRt)
+library(dplyr)
+library(ggplot2)
+```
+
+## Two model families, one problem {#sec-families}
+
+**[PyPSA](https://pypsa.org)** is a capacity-expansion model of the electric
+power sector, with extensions and links into other sectors. It is built for
+energy-transition studies with electricity at the centre, and that focus is a
+strength: it is an *ad-hoc and efficient* solution for exactly what it was made
+to do. Python.
+
+**energyRt** is a macro energy-system model **generator**. It is designed for
+flexibility in describing technological processes and chains, for long-term
+energy and environmental policy evaluation. R.
+
+The two overlap enough to be comparable and differ enough to be interesting. The
+translation exercise has three purposes, in order of importance:
+
+1. **Demonstrate an energy-modelling workflow in R** using a model many people
+   already know.
+2. **Validate** that the translated model does the same mathematics. That is what
+   the comparisons below are — a correctness check, not a benchmark and not a
+   competition.
+3. Give course participants a European model to take away and investigate.
+
+There is a fourth thing worth naming up front, because it shapes everything in
+@sec-price: converting an ad-hoc model with roughly **ten sets of constraints**
+into a general system with roughly **a hundred pre-built ones** buys
+expandability and a broader range of applications, and costs model size. That
+cost was the intent from the beginning, not a defect discovered afterwards.
+
+::: {.callout-note appearance="simple"}
+This is **not** the first attempt.
+[**revaluation**](https://opendecarbonization.github.io/revaluation/) (2023) translated PyPSA models into both energyRt and
+[Switch](https://switch-model.org). This version was completed with the help of
+AI — Claude, by Anthropic.
+:::
+
+## What was converted {#sec-mapping}
+
+The conversion reads a PyPSA-Eur network at the `base_s_{clusters}_elec.nc` cut
+point — after the network is built, before `prepare_network.py` applies policy
+overlays and temporal averaging — and maps each component onto energyRt objects.
+
+| PyPSA | energyRt | note |
+|---|---|---|
+| `Generator` | `technology` + `weather` | grouped by carrier; the time series becomes a weather factor |
+| `Load` | `demand` | |
+| `Line` (AC) | `trade` | merged by bus pair; **KVL not reproduced** |
+| `Link` (DC) | `trade` | merged by bus pair |
+| `Link` (converter) | `technology` | charger / discharger |
+| `StorageUnit` | `storage` | with inflow: decomposed into supply + storage + technology |
+| `Store` | `storage` | reservoir |
+| carriers | `commodity` (+ `supply`) | |
+
+For the 41-node European network — 123 buses, 77 AC lines, 213 links, 397
+generators, 59 storage units, 82 stores, 8,760 hourly snapshots — that produces
+**147 energyRt objects** in about 11 seconds:
+
+```{r}
+eu   <- readRDS("data/eu41_model.rds")
+repo <- eu@data[[1]]
+summary(repo)
+```
+
+```
+ commodity  demand  storage  supply  technology  trade  weather
+        13       1        4       9          21     92        7
+```
+
+### Nothing disappears quietly {#sec-issues}
+
+The conversion has one rule that matters more than any mapping decision:
+**detect, name, record, exclude — never clamp, never invent.** A parameter that
+cannot be represented is reported and its entity dropped; it is never quietly
+replaced with a plausible number.
+
+Every PyPSA row is therefore either mapped or listed as dropped. On the 41-node
+network, 18 entities were excluded and 16 more kept with a warning:
+
+| rule | severity | n | |
+|---|---|---:|---|
+| `link_zero_capacity` | blocker | 16 | transmission link with no capacity (TYNDP candidate project) |
+| `storage_subhourly_duration` | blocker | 1 | duration below one hour; cannot cycle at hourly resolution |
+| `storage_zero_duration` | blocker | 1 | reservoir with no storage capacity (`max_hours = 0`) |
+| `line_zero_impedance` | warning | 13 | no impedance data; `teff` cannot be derived, set to 1 |
+| `storage_multiyear_duration` | warning | 3 | duration exceeds a year; usually a small `p_nom` on a real reservoir |
+
+This is the part of a conversion most worth reading. A model that silently
+clamped a 28-second pumped-hydro plant to half an hour would build, solve, and
+mean nothing.
+
+## Seeing the model {#sec-seeing}
+
+Once converted, the objects are ordinary energyRt objects and the usual tools
+work on them.
+
+`getObject()` fetches by name or by class, named without the repository prefix:
+
+```{r}
+draw(getObject(eu, name = "E_CCGT")[[1]])   # the chain: GAS in, ELC out
+draw(getObject(eu, name = "STG_H2")[[1]])   # the three-role storage
+```
+
+```{r}
+autoplot(getObject(eu, class = "supply")[[1]], interpolate = TRUE)
+
+# `style = "line"`; the default "area" style needs a year to stack on, and this
+# model carries `year = NA` as a wildcard, which yields "no rows to aggregate".
+autoplot(getObject(eu, name = "DEM_ELC")[[1]], style = "line")
+```
+
+Weather factors are where a converted model is easiest to sanity-check, because
+mistakes are visible. `autoplot.weather()` draws a heatmap by default — hour of
+day against day of year — so a solar profile that is bright at midnight tells you
+immediately that something is wrong with the time mapping:
+
+```{r}
+w <- getObject(eu, class = "weather")
+
+# `region` picks a subset: a number takes that many, or name them explicitly.
+# Without it all 41 regions are faceted onto one plot and only the strip labels
+# remain legible.
+autoplot(w[["W_SOLAR"]], region = 2)          # heatmap is the default style
+autoplot(w[["W_ONWIND"]], region = "BE0_0")
+```
+
+## Validation {#sec-validation}
+
+Two models solving the same problem should reach the same number. Whether they do
+is the whole question.
+
+### Belgium, one node, full year {#sec-validation-be}
+
+The cleanest test available is Belgium as a **copperplate**: one AC bus, no
+lines, the full 8,760-hour year. It removes both of the things that could
+otherwise excuse a difference — there is no transmission, so no
+Kirchhoff-versus-transport gap, and it is a full year, so the annualisation
+weighting is simply `1` on both sides.
+
+| | energyRt | PyPSA | difference |
+|---|---:|---:|---:|
+| base | 8,260,626,305.45 | 8,260,626,305.45 | **0.00** |
+| demand doubled | 13,387,554,321.05 | 13,387,554,321.06 | **0.01** |
+
+Identical to the cent. The capacity-expansion answer matches too — **31,162.8 MW
+built on both sides** under doubled demand, each technology within 0.05 MW
+(@sec-growth works through this case as an exercise).
+
+### Europe, 41 nodes {#sec-validation-eu}
+
+The full European network at hourly resolution is about 28 million variables,
+which no open solver will take. Sampling four representative days — mid-January,
+April, July and October — gives 96 timeslices and ~326,000 variables, which
+solves in under three minutes.
+
+| | |
+|---|---:|
+| energyRt | 78,474,565,582 |
+| PyPSA (transport) | 78,426,977,892 |
+| **difference** | **+0.0607%** |
+
+Every capacity matches to four decimal places, demand is exact, and
+weather-driven generation agrees to eight significant figures — which is
+independent evidence that both models are reading the same 96 hours.
+
+::: {.callout-important appearance="simple"}
+**Compare `objective_total`, not `objective`.** PyPSA leaves the capital cost of
+non-extendable plant out of `n.objective` and reports it separately as
+`objective_constant`. energyRt puts everything in one number. Add PyPSA's two
+together before comparing, or the two models will appear to disagree by an order
+of magnitude when they do not.
+:::
+
+## Three real differences {#sec-differences}
+
+Where the models genuinely differ, they differ for reasons worth understanding.
+
+### 1. Kirchhoff versus transport {#sec-kvl}
+
+PyPSA imposes Kirchhoff's voltage law on AC cycles: power flows according to
+impedance, not according to what would be cheapest. energyRt's `trade` is a
+**transport** formulation — flow is bounded by capacity and otherwise free.
+
+Transport is a relaxation, so it can only be cheaper. How much cheaper depends
+entirely on the network:
+
+| | KVL | transport | gap |
+|---|---:|---:|---:|
+| Belgium copperplate (0 lines) | — | — | **none possible** |
+| Europe, 41 nodes (77 AC lines) | 675,336,409 | 652,485,728 | **3.38%** |
+
+At one node the difference cannot exist. At 41 nodes it is 3.38%, and that is the
+honest size of the paradigm gap between the two tools.
+
+### 2. Snapshot weighting versus calendar annualisation {#sec-weighting}
+
+This one is small in appearance and decisive in effect.
+
+PyPSA scales operating cost by `snapshot_weightings.objective` and charges
+capital as a full annual annuity regardless. On a *sampled* network PyPSA-Eur
+leaves that weighting at **1**, so the model pays a year of capital against only
+the sampled hours of fuel. energyRt instead derives `pTimesliceWeight` from the
+calendar as `1/year_fraction`, which **annualises** operating cost.
+
+On a full year the two coincide and the question never arises. On a 168-hour
+sample of Belgium they do not, and the consequence is not subtle:
+
+| weighting | objective | CO₂ | what runs |
+|---|---:|---:|---|
+| PyPSA's (w = 1) | 164,899,752 | 274,037 t | gas, nuclear, waste, biomass, oil |
+| annualised (w = 52.14) | 245,652,738 | **0** | H₂ charge/discharge only |
+
+The same model, the same data, one convention apart — and in one of them the
+system has no fossil fleet at all and nothing for a carbon price to act on.
+Neither is wrong. They answer different questions, and a comparison must state
+which one it is asking.
+
+### 3. `Store` + two `Link`s versus one storage {#sec-storage-shape}
+
+PyPSA builds a hydrogen system from three components: a `Store` for the gas, a
+`Link` for the electrolyser, and a `Link` for the fuel cell. energyRt's `storage`
+carries three commodity roles — `@input`, `@storage`, `@output` — so the same
+system can be one object.
+
+A consequence worth knowing when reading results: **PyPSA rates a `Link` on its
+input bus; energyRt rates a technology on its activity.** The Belgian
+electrolyser confirms the rule exactly — PyPSA 162.058 MW × 0.6994 efficiency =
+113.3434, which is energyRt's figure to four decimals.
+
+## The price of generality {#sec-price}
+
+energyRt solves the same problem with a substantially larger linear program:
+
+| | rows | columns | after presolve |
+|---|---:|---:|---|
+| energyRt | 349,557 | 326,345 | 78,688 × 115,820 |
+| PyPSA | 207,673 | 102,332 | 51,022 × 81,624 |
+
+**3.2× the columns for identical physics**, and the same ratio shows up in time
+and memory: ~146 s and 0.76 GB (R) + 1.93 GB (Julia) against PyPSA's ~12 s and
+0.71 GB.
+
+Presolve removes 64% of energyRt's columns, which tells you what they are:
+**definitional**. energyRt materialises `vTechInp`, `vTechOut`, `vTechAct`,
+`vInpTot`, `vOutTot`, `vTechInpTot` and their relatives as explicit variables
+where PyPSA folds the same relationships into expressions.
+
+That is the trade, and it was deliberate:
+
+- **What it costs.** A larger LP, more memory, longer solves.
+- **What it buys.** A hundred pre-built constraint sets instead of ten, so the
+  same model can be extended into sectors, processes and policies the original
+  was never built for — and every flow in the system is directly reportable
+  through `getData()`, because it is a variable rather than an expression.
+
+A model built for one job will always beat a generator at that job. The generator
+earns its keep on the second job.
+
+## Limitations {#sec-limitations}
+
+Stated plainly, because this material is for training:
+
+- **Training use only.** The validity checks reproduced results in the cases
+  shown here; they are not a certification of the converter.
+- **The full-year 41-node model has never been solved.** The European comparison
+  rests on a four-day sample. A full-year continental solve is future work.
+- **No deeper comparison has been done** — no sensitivity analysis, no scenario
+  ensemble, no investigation of where the formulations diverge under stress.
+- The four-day sample **cannot represent seasonal storage**: state of charge
+  carries across the seams between disjoint days, so long-duration storage is
+  understated by construction.
+
+The model and converter are handed to participants for further investigation. If
+you find something wrong, that is a useful outcome of the exercise.
+
+## Reproduce it yourself {#sec-reproduce}
+
+Both artefacts ship with the course:
+
+```{r}
+eu <- readRDS("data/eu41_model.rds")          # the converted 41-node model
+getCalendar(eu)                                # 8760 timeslices, full year
+readRDS("data/eu41_provenance.rds")            # coverage table + issue register
+```
+
+To solve it you need a sampled calendar, because the full-resolution model is
+intractable. A model holds the **whole** calendar; a scenario may be solved on a
+**subset** of its timeslices:
+
+```{r}
+yday_sample <- c(15, 105, 196, 288)            # mid-Jan / Apr / Jul / Oct
+tt  <- data.table::as.data.table(getCalendar(eu)@timetable)
+sub <- tt[YDAY %in% yday2YDAY(yday_sample) & HOUR %in% hour2HOUR(0:23)]
+sub <- sub[, .SD, .SDcols = setdiff(names(sub), "weight")]
+
+cal4 <- newCalendar("d365_h24_subset_4days",
+                    timetable     = sub,
+                    year_fraction = sum(sub$share))
+
+scen <- interpolate_model(eu, cal4, name = "eu41_4d")
+model_size(scen)
+sol <- solve_scen(scen, solver = solver_options$julia_highs)
+```
+
+::: {.callout-warning appearance="simple"}
+Two traps in `newCalendar()`, each of which costs a failed run:
+
+- The timetable must stay a **data.table** — `.complete_calendar()` indexes
+  `dtf[, weight]` with data.table semantics, and a plain `data.frame` fails with
+  `object 'weight' not found`.
+- **Keep `timeslice`, drop `weight`.** The check needs `timeslice`; but `weight`
+  must be absent so the constructor recomputes `1/sum(share)` for the sample
+  instead of inheriting the parent calendar's value. Passing the parent's weight
+  through silently gives the sample full-year weighting — @sec-weighting is what
+  that costs.
+:::
+
+The source network is shipped too (`data/base_s_41_elec.nc`, 14.8 MB), so the
+conversion itself can be re-run with the `PyPSA-Eur-to-energyRt` converter.
+
+## Credits and licences {#sec-credits}
+
+**Prior art.** [**revaluation**](https://opendecarbonization.github.io/revaluation/) (2023) translated PyPSA models into
+energyRt and into Switch. This version was completed with the help of AI —
+Claude, by Anthropic.
+
+**Software.** PyPSA-Eur (MIT / CC-BY-4.0 / CC0-1.0 per component, see its
+`REUSE.toml`), PyPSA, atlite, energyRt.
+
+**Data.** The converted model embeds real data, so its licences travel with it.
+The full table is in @sec-licences; the two entries that need care are repeated
+here because they are easy to miss:
+
+- **OpenStreetMap is ODbL-1.0.** The grid capacities in the `trade` objects
+  descend from OSM, so a redistributed derivative carries attribution and
+  share-alike obligations. Not a commercial restriction.
+- **The demand series licence is unresolved.** PyPSA-Eur's own data inventory
+  records `entsoe_electricity_demand` and `opsd_electricity_demand` as licence
+  **unknown**.
+
+The two entries in that inventory that *do* restrict commercial use or
+redistribution — Eurostat `lau_regions` and BGR `aquifer_data` — are
+sector-coupling inputs and are **not present** in this electricity-only build.
+
+## Where this connects
+
+@sec-realmodel used a converted Belgian model as a teaching object without asking
+where its numbers came from. This chapter is that question answered: what was
+mapped, what was dropped, what matches, and what does not.
+
+The result worth remembering is not the agreement — two correct implementations
+of the same linear program *should* agree. It is that establishing the agreement
+required pinning down three conventions (network paradigm, snapshot weighting,
+component rating) that are invisible until you compare, and any one of which
+could have been mistaken for a modelling error.

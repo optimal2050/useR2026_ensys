@@ -1,0 +1,230 @@
+---
+output: html_document
+editor_options:
+  chunk_output_type: inline
+---
+
+# Electric vehicles: when to charge {#sec-ev}
+
+In @sec-ldv a vehicle was a **technology**: fuel in, passenger-kilometres out,
+now. That is the right object for a fleet's *annual* fuel use, and the wrong one
+for the question that actually makes electric vehicles interesting — **when** the
+electricity is drawn from the grid. A technology consumes in the same timeslice
+it produces. A car charges at night and drives in the morning.
+
+Moving energy between timeslices is what a `storage` does, so here the vehicle
+**is** the storage:
+
+| | | |
+|---|---|---|
+| `@input` | grid electricity | the on-board charger, kW |
+| `@storage` | the battery | kWh |
+| `@output` | kilometres | the motor, km/h |
+
+The whole chapter runs on one day, resolved hourly:
+
+```{r}
+hrs <- sprintf("h%02d", 0:23)        # 24 hourly timeslices: h00 ... h23
+YF  <- 1 / 365                       # this calendar is ONE DAY out of a year
+
+cal <- newCalendar(
+  timetable = make_timetable(struct = list(ANNUAL = "ANNUAL", HOUR = hrs),
+                             year_fraction = YF),
+  year_fraction = YF, name = "one_day")
+```
+
+Saying `year_fraction = 1/365` is what makes a timeslice a real hour: each slice
+gets `share = 1/8760`, so `cap.up = 7` below means 7 kW and needs no further
+argument. It also sets the slice `weight` to 365, which is why the costs quoted
+are a day's bill repeated across the year.
+
+```{r}
+car <- newStorage(
+  "CAR",
+  input    = list(comm = "CHG", cap.up = 7),     # 7 kW on-board charger
+  storage  = list(comm = "BAT", cap.up = 60),    # 60 kWh battery
+  output   = list(comm = "KM"),                  # kilometres
+  seff     = data.frame(inpeff = 0.90, outeff = 6),
+  af       = data.frame(cinp.up = 1, cout.up = 1),
+  capacity = list(cap.up = 120),                 # motor, km/h
+  duration = data.frame(duration.lo = 0, duration.up = 1e6),
+  vintage  = data.frame(olife = 10L))
+```
+
+Two things in there are worth stopping on.
+
+**`seff` is not a round trip here.** `inpeff = 0.90` is charging loss (grid kWh →
+battery kWh) but `outeff = 6` is **six kilometres per kWh** — a conversion
+between two different commodities, not an efficiency between 0 and 1. Because
+`@input`, `@storage` and `@output` may each name a different commodity, `seff`
+became a pair of cross-commodity factors. Only when all three coincide is it the
+round-trip efficiency you are used to.
+
+**`duration` is switched off on purpose.** `duration` is the ratio of storing
+capacity to output capacity, and it is normally a number of *hours*. Here the
+reservoir is in kWh and the motor in km/h — different dimensions — so the ratio
+is not an hour count and pinning it would be meaningless. Opening it and bounding
+the battery directly with `storage = list(cap.up = 60)` says what we mean.
+
+## 5.1 — Passenger car: the schedule is given {#sec-ev-commute}
+
+*Learning goal:* a storage whose input, stored and output commodities are all
+different; charging as a **timing** decision under a price signal.
+
+The driver commutes 30 km at 08:00 and 30 km back at 18:00 — that is fixed. The
+grid price is not: cheap before 06:00, expensive between 17:00 and 21:00. The
+only decision left is when to charge.
+
+```{r}
+price <- ifelse(0:23 < 6, 0.05, ifelse(0:23 >= 17 & 0:23 <= 21, 0.40, 0.15))
+
+m1 <- newModel(
+  name = "ev_commute", region = "R1", horizon = newHorizon(2020),
+  discount = 0, calendar = cal,          # the one-day calendar above
+  repo = newRepository("r1",
+    newCommodity("ELC", timeframe = "HOUR"),
+    newCommodity("BAT", timeframe = "HOUR"),
+    newCommodity("KM",  timeframe = "HOUR"),
+    newSupply("GRID", commodity = "ELC",
+              supply = data.frame(timeslice = hrs, cost = price)),
+    car,
+    newDemand("TRIPS", commodity = "KM",
+              demand = data.frame(timeslice = c("h08", "h18"), demand = 30))))
+```
+
+Solved, this draws **11.11 kWh** — 60 km ÷ 6 km/kWh ÷ 0.90 — and takes all of it
+in hours **04 and 05**, the last of the cheap window, for an annual bill of
+**202.78** (0.5556 for the day, repeated 365 times). Charging as late as the
+cheap tariff allows is not an accident: with nothing else to separate the cheap
+hours, any of them would do, and the solver simply reports one optimal answer.
+
+**Exercises.**
+
+**5.1a** Reproduce the numbers. Check the energy chain by hand:
+`vStorageInp * inpeff == vStorageOut / outeff`.
+
+**5.1b** Shrink the charger to `cap.up = 3`. How many hours does charging spread
+over, and does the bill change? Explain why or why not.
+
+**5.1c** Add a second cheap window at midday (solar). Does the car use it? Add a
+`storage = list(cap.up = 15)` small battery and try again — what changed?
+
+**5.1d** The answer above is *degenerate*: several charging schedules cost
+exactly the same. Add a tiny per-kWh `varom` and confirm the solution stops
+moving between runs. Why is degeneracy worth noticing in a real study?
+
+## 5.2 — Freight van: the schedule is a decision too {#sec-ev-freight}
+
+*Learning goal:* what happens when the service requirement is a **total** rather
+than a profile, and how to express that with `newConstraint()`.
+
+A delivery van must cover 240 km in the day. *When* it drives is up to the
+operator. Instead of an hourly `newDemand()`, put the requirement on the daily
+total and let the optimiser choose both the driving hours and the charging hours:
+
+```{r}
+route <- newConstraint(
+  name = "ROUTE", eq = ">=",
+  for.each = list(region = "R1", year = 2020L),
+  term1 = list(variable = "vStorageOut",
+               for.sum = list(stg = "VAN", comm = "KM", timeslice = hrs)),
+  defVal = 240)
+```
+
+The van (22 kW charger, 100 kWh battery) covers its 240 km and charges entirely
+in hours **00–05**, at an annual cost of **811.11**. The driving itself spreads across all 24 hours, because
+nothing distinguishes them — a *degenerate* schedule again, and a useful prompt.
+
+**Exercises.**
+
+**5.2a** Build it and confirm the 240 km is met and charging sits in the cheap
+window.
+
+**5.2b** The driving schedule is degenerate. Add a delivery window — no driving
+before 07:00 or after 19:00 — with `af = data.frame(timeslice = <night hours>,
+cout.up = 0)`. Now when does it drive, and when does it charge?
+
+**5.2c** Give the van a **depot-only** charger: `cinp.up = 0` except between
+22:00 and 06:00. Does the route survive? What is the smallest battery that still
+works?
+
+**5.2d** Compare against modelling the same van as a `newTechnology()` with an
+annual fuel demand. What question can the storage answer that the technology
+cannot?
+
+::: {.callout-note}
+## Why a constraint and not a coarse commodity
+The tidy way to say "240 km a day, hours free" would be to declare `KM` at a
+`DAY` timeframe and let the hourly driving aggregate up. That works for a
+**technology** — `eqTechOutTot` has a term that sums finer flows onto a coarser
+commodity — but the storage equivalent does not yet exist, so the model comes
+out infeasible. Until it does, the constraint above is the way to express it.
+:::
+
+## 5.3 — A shared charging post {#sec-ev-shared}
+
+*Learning goal:* shared infrastructure as a **capacity several processes compete
+for**, and what congestion costs.
+
+Three cars, one post. Each car keeps its own 7 kW on-board charger — that is
+`@input$cap.up`, a property of the vehicle — but all three now draw through a
+single `POST` whose rating is the thing under study.
+
+```{r}
+post <- newTechnology(
+  "POST", input = list(comm = "ELC"), output = list(comm = "CHG"),
+  capacity = data.frame(cap.up = post_kw),
+  cap2act = 8760,                    # a technology defaults to 1 -> state it
+  vintage = data.frame(olife = 10L))
+```
+
+Sweeping the post rating, with the three cars needing 33.3 kWh between them:
+
+| post | annual cost | peak draw | hours charging |
+|---:|---:|---:|---:|
+| 21 kW | 608.33 | 14.00 kW | 3 |
+| 10 kW | 608.33 | 10.00 kW | 4 |
+| 6 kW | 608.33 | 6.00 kW | 6 |
+| 2 kW | **1387.00** | 2.00 kW | 18 |
+| 1.2 kW | infeasible | | |
+
+This is the whole story of shared charging in one table. Down to 6 kW the post
+costs nothing: there are exactly six cheap hours, and the fleet of three still
+fits all its charging inside them. Above that the post stops binding at all — the
+cars' own 7 kW chargers become the limit, which is why the peak draw stops rising.
+Below 6 kW the fleet cannot fit, charging spills into the expensive evening, and
+the bill **more than doubles**. Keep shrinking and the energy cannot be delivered
+at all.
+
+**Exercises.**
+
+**5.3a** Reproduce the sweep. Find the rating at which cost first rises — the
+point where the post starts binding — and explain why it is 6 kW and not
+something else. Then explain the *other* end: why does raising the post above
+7 kW change nothing at all?
+
+**5.3b** Give `POST` an `invcost` and let the model *size* it instead of
+asserting a rating. Does it choose the knee of the curve? Should it?
+
+**5.3c** Stagger the fleet: give one car a morning commute and another an
+evening shift. Does the shared post get cheaper per car? This is the
+diversity-factor argument for shared infrastructure — make it quantitative.
+
+**5.3d** Add vehicle-to-grid: let a car discharge back to `ELC` as well as to
+`KM`. You will need a second output commodity. Then check whether the model ever
+charges *and* discharges in the same hour — and if it does, work out how you
+would forbid it. (energyRt has no flag for this: a `@sharedThroughput` slot was
+tried and withdrawn, because for a single-commodity store the LP never does it
+anyway, and across different commodities the two flows are not in the same units
+to begin with.)
+
+## Where this connects
+
+- @sec-ldv modelled vehicles as technologies. Everything there is still true for
+  annual fuel accounting; this chapter is about **timing**, which needs storage.
+- @sec-processes introduced multi-input/multi-output processes; a storage with
+  three different commodities is the same idea applied across time.
+- `storage_duration()` in energyRt splits a storage level into how long the
+  energy actually sits there — see @sec-duration, where it separates a battery
+  that cycles daily from a hydrogen store that holds energy for months. On a car
+  it would separate the overnight charge from the buffer that never empties.
