@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.30">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>7&nbsp; Electric vehicles: when to charge – Energy System Modeling with R</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./06-real-model.html" rel="next">
+<link href="./04-special-processes.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-b6a8276bf55561bdbc268162d41bd1f7.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-9e3e5b9121e68b3f077afb32f2c64d95.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Energy System Modeling with R</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="https://energyRt.org/use-R-2026"> 
+<span class="menu-text">Course info &amp; registration</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://mstdn.science/@optimal2050"> <i class="bi bi-mastodon" role="img" aria-label="optimal2050 on Mastodon">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/optimal2050/useR2026_ensys"> <i class="bi bi-github" role="img" aria-label="Course materials on GitHub">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./01-first-model.html">Exercises</a></li><li class="breadcrumb-item"><a href="./05-electric-vehicles.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Electric vehicles: when to charge</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Preface</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./r-resources.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">R: setup and resources</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./installation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Installing energyRt</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Exercises</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-first-model.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Your first energy model</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-time-resolution.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Time resolution</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-regions-and-trade.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Regions and trade</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-special-processes.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Special cases of processes</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-electric-vehicles.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Electric vehicles: when to charge</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-real-model.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">A real model, end to end</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Case study</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-pypsa-replication.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Replication of PyPSA-Eur in energyRt</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#sec-ev-commute" id="toc-sec-ev-commute" class="nav-link active" data-scroll-target="#sec-ev-commute"><span class="header-section-number">7.1</span> 5.1 — Passenger car: the schedule is given</a></li>
+  <li><a href="#sec-ev-freight" id="toc-sec-ev-freight" class="nav-link" data-scroll-target="#sec-ev-freight"><span class="header-section-number">7.2</span> 5.2 — Freight van: the schedule is a decision too</a></li>
+  <li><a href="#sec-ev-shared" id="toc-sec-ev-shared" class="nav-link" data-scroll-target="#sec-ev-shared"><span class="header-section-number">7.3</span> 5.3 — A shared charging post</a></li>
+  <li><a href="#where-this-connects" id="toc-where-this-connects" class="nav-link" data-scroll-target="#where-this-connects"><span class="header-section-number">7.4</span> Where this connects</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./01-first-model.html">Exercises</a></li><li class="breadcrumb-item"><a href="./05-electric-vehicles.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Electric vehicles: when to charge</span></a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title"><span id="sec-ev" class="quarto-section-identifier"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Electric vehicles: when to charge</span></span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<div class="callout callout-style-simple callout-important">
+<div class="callout-body d-flex">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-body-container">
+<p><strong>Work in progress.</strong> The three models below have been run locally on GLPK and the numbers quoted in the text are their actual output. The book itself renders without executing them (<code>eval: false</code> in <code>_quarto.yml</code>), because GitHub Pages has no solver.</p>
+</div>
+</div>
+</div>
+<p>In <a href="04-special-processes.html#sec-ldv" class="quarto-xref"><span>Section 6.3</span></a> a vehicle was a <strong>technology</strong>: fuel in, passenger-kilometres out, now. That is the right object for a fleet’s <em>annual</em> fuel use, and the wrong one for the question that actually makes electric vehicles interesting — <strong>when</strong> the electricity is drawn from the grid. A technology consumes in the same timeslice it produces. A car charges at night and drives in the morning.</p>
+<p>Moving energy between timeslices is what a <code>storage</code> does, so here the vehicle <strong>is</strong> the storage:</p>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td><code>@input</code></td>
+<td>grid electricity</td>
+<td>the on-board charger, kW</td>
+</tr>
+<tr class="even">
+<td><code>@storage</code></td>
+<td>the battery</td>
+<td>kWh</td>
+</tr>
+<tr class="odd">
+<td><code>@output</code></td>
+<td>kilometres</td>
+<td>the motor, km/h</td>
+</tr>
+</tbody>
+</table>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>car <span class="ot">&lt;-</span> <span class="fu">newStorage</span>(</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"CAR"</span>,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">input    =</span> <span class="fu">list</span>(<span class="at">comm =</span> <span class="st">"CHG"</span>, <span class="at">cap.up =</span> <span class="dv">7</span>),     <span class="co"># 7 kW on-board charger</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">storage  =</span> <span class="fu">list</span>(<span class="at">comm =</span> <span class="st">"BAT"</span>, <span class="at">cap.up =</span> <span class="dv">60</span>),    <span class="co"># 60 kWh battery</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">output   =</span> <span class="fu">list</span>(<span class="at">comm =</span> <span class="st">"KM"</span>),                  <span class="co"># kilometres</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">seff     =</span> <span class="fu">data.frame</span>(<span class="at">inpeff =</span> <span class="fl">0.90</span>, <span class="at">outeff =</span> <span class="dv">6</span>),</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">af       =</span> <span class="fu">data.frame</span>(<span class="at">cinp.up =</span> <span class="dv">1</span>, <span class="at">cout.up =</span> <span class="dv">1</span>),</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">capacity =</span> <span class="fu">list</span>(<span class="at">cap.up =</span> <span class="dv">120</span>),                 <span class="co"># motor, km/h</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">duration =</span> <span class="fu">data.frame</span>(<span class="at">duration.lo =</span> <span class="dv">0</span>, <span class="at">duration.up =</span> <span class="fl">1e6</span>),</span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">vintage  =</span> <span class="fu">data.frame</span>(<span class="at">olife =</span> <span class="dv">10</span>L))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Two things in there are worth stopping on.</p>
+<p><strong><code>seff</code> is not a round trip here.</strong> <code>inpeff = 0.90</code> is charging loss (grid kWh → battery kWh) but <code>outeff = 6</code> is <strong>six kilometres per kWh</strong> — a conversion between two different commodities, not an efficiency between 0 and 1. Because <code>@input</code>, <code>@storage</code> and <code>@output</code> may each name a different commodity, <code>seff</code> became a pair of cross-commodity factors. Only when all three coincide is it the round-trip efficiency you are used to.</p>
+<p><strong><code>duration</code> is switched off on purpose.</strong> <code>duration</code> is the ratio of storing capacity to output capacity, and it is normally a number of <em>hours</em>. Here the reservoir is in kWh and the motor in km/h — different dimensions — so the ratio is not an hour count and pinning it would be meaningless. Opening it and bounding the battery directly with <code>storage = list(cap.up = 60)</code> says what we mean.</p>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>An energyRt calendar is a YEAR — so say which part of it you mean
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>This is the trap that makes or breaks every number below.</p>
+<p>A capacity bound is <code>cap.up * cap2act * pTimesliceShare</code>, where <code>cap2act</code> is flow per unit of capacity per <strong>year</strong>. It defaults to 8760 for a storage, so <code>cap.up = 7</code> means 7 per hour — <em>provided a timeslice really is an hour</em>.</p>
+<p>Declare 24 timeslices as a whole year and each one is <strong>365 hours</strong> long, so the same <code>cap.up = 7</code> quietly means 0.019 kW. The fix is not to fiddle with <code>cap2act</code>: it is to say that this calendar covers <strong>one day out of the year</strong>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>YF  <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">/</span> <span class="dv">365</span>                       <span class="co"># this calendar is ONE DAY of a year</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>cal <span class="ot">&lt;-</span> <span class="fu">newCalendar</span>(</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">timetable =</span> <span class="fu">make_timetable</span>(<span class="at">struct =</span> <span class="fu">list</span>(<span class="at">ANNUAL =</span> <span class="st">"ANNUAL"</span>, <span class="at">HOUR =</span> hrs),</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>                             <span class="at">year_fraction =</span> YF),</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">year_fraction =</span> YF, <span class="at">name =</span> <span class="st">"one_day"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Now each slice has <code>share = 1/8760</code> — a real hour — <code>cap.up = 7</code> is 7 kW with no extra arguments, and the timeslice <code>weight</code> comes out as 365, so costs are annualised as “this day, repeated all year”. That is why the objectives below are 365x a single day’s fuel bill.</p>
+<p>The <strong>battery</strong> never takes a <code>cap2act</code>: 60 kWh is 60 kWh however the year is sliced. A <code>technology</code> still needs one stated explicitly (<code>pTechCap2act</code> defaults to 1), which is why <code>POST</code> below carries <code>cap2act = 8760</code>.</p>
+</div>
+</div>
+<section id="sec-ev-commute" class="level2" data-number="7.1">
+<h2 data-number="7.1" class="anchored" data-anchor-id="sec-ev-commute"><span class="header-section-number">7.1</span> 5.1 — Passenger car: the schedule is given</h2>
+<p><em>Learning goal:</em> a storage whose input, stored and output commodities are all different; charging as a <strong>timing</strong> decision under a price signal.</p>
+<p>The driver commutes 30 km at 08:00 and 30 km back at 18:00 — that is fixed. The grid price is not: cheap before 06:00, expensive between 17:00 and 21:00. The only decision left is when to charge.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>price <span class="ot">&lt;-</span> <span class="fu">ifelse</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">23</span> <span class="sc">&lt;</span> <span class="dv">6</span>, <span class="fl">0.05</span>, <span class="fu">ifelse</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">23</span> <span class="sc">&gt;=</span> <span class="dv">17</span> <span class="sc">&amp;</span> <span class="dv">0</span><span class="sc">:</span><span class="dv">23</span> <span class="sc">&lt;=</span> <span class="dv">21</span>, <span class="fl">0.40</span>, <span class="fl">0.15</span>))</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>m1 <span class="ot">&lt;-</span> <span class="fu">newModel</span>(</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">name =</span> <span class="st">"ev_commute"</span>, <span class="at">region =</span> <span class="st">"R1"</span>, <span class="at">horizon =</span> <span class="fu">newHorizon</span>(<span class="dv">2020</span>),</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">discount =</span> <span class="dv">0</span>, <span class="at">calendar =</span> cal,          <span class="co"># the one-day calendar above</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">repo =</span> <span class="fu">newRepository</span>(<span class="st">"r1"</span>,</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="fu">newCommodity</span>(<span class="st">"ELC"</span>, <span class="at">timeframe =</span> <span class="st">"HOUR"</span>),</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">newCommodity</span>(<span class="st">"BAT"</span>, <span class="at">timeframe =</span> <span class="st">"HOUR"</span>),</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">newCommodity</span>(<span class="st">"KM"</span>,  <span class="at">timeframe =</span> <span class="st">"HOUR"</span>),</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    <span class="fu">newSupply</span>(<span class="st">"GRID"</span>, <span class="at">commodity =</span> <span class="st">"ELC"</span>,</span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>              <span class="at">supply =</span> <span class="fu">data.frame</span>(<span class="at">timeslice =</span> hrs, <span class="at">cost =</span> price)),</span>
+<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>    car,</span>
+<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">newDemand</span>(<span class="st">"TRIPS"</span>, <span class="at">commodity =</span> <span class="st">"KM"</span>,</span>
+<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>              <span class="at">demand =</span> <span class="fu">data.frame</span>(<span class="at">timeslice =</span> <span class="fu">c</span>(<span class="st">"h08"</span>, <span class="st">"h18"</span>), <span class="at">demand =</span> <span class="dv">30</span>))))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Solved, this draws <strong>11.11 kWh</strong> — 60 km ÷ 6 km/kWh ÷ 0.90 — and takes all of it in hours <strong>04 and 05</strong>, the last of the cheap window, for an annual bill of <strong>202.78</strong> (0.5556 for the day, repeated 365 times). Charging as late as the cheap tariff allows is not an accident: with nothing else to separate the cheap hours, any of them would do, and the solver simply reports one optimal answer.</p>
+<p><strong>Exercises.</strong></p>
+<p><strong>5.1a</strong> Reproduce the numbers. Check the energy chain by hand: <code>vStorageInp * inpeff == vStorageOut / outeff</code>.</p>
+<p><strong>5.1b</strong> Shrink the charger to <code>cap.up = 3</code>. How many hours does charging spread over, and does the bill change? Explain why or why not.</p>
+<p><strong>5.1c</strong> Add a second cheap window at midday (solar). Does the car use it? Add a <code>storage = list(cap.up = 15)</code> small battery and try again — what changed?</p>
+<p><strong>5.1d</strong> The answer above is <em>degenerate</em>: several charging schedules cost exactly the same. Add a tiny per-kWh <code>varom</code> and confirm the solution stops moving between runs. Why is degeneracy worth noticing in a real study?</p>
+</section>
+<section id="sec-ev-freight" class="level2" data-number="7.2">
+<h2 data-number="7.2" class="anchored" data-anchor-id="sec-ev-freight"><span class="header-section-number">7.2</span> 5.2 — Freight van: the schedule is a decision too</h2>
+<p><em>Learning goal:</em> what happens when the service requirement is a <strong>total</strong> rather than a profile, and how to express that with <code>newConstraint()</code>.</p>
+<p>A delivery van must cover 240 km in the day. <em>When</em> it drives is up to the operator. Instead of an hourly <code>newDemand()</code>, put the requirement on the daily total and let the optimiser choose both the driving hours and the charging hours:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>route <span class="ot">&lt;-</span> <span class="fu">newConstraint</span>(</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">name =</span> <span class="st">"ROUTE"</span>, <span class="at">eq =</span> <span class="st">"&gt;="</span>,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">for.each =</span> <span class="fu">list</span>(<span class="at">region =</span> <span class="st">"R1"</span>, <span class="at">year =</span> <span class="dv">2020</span>L),</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">term1 =</span> <span class="fu">list</span>(<span class="at">variable =</span> <span class="st">"vStorageOut"</span>,</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>               <span class="at">for.sum =</span> <span class="fu">list</span>(<span class="at">stg =</span> <span class="st">"VAN"</span>, <span class="at">comm =</span> <span class="st">"KM"</span>, <span class="at">timeslice =</span> hrs)),</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">defVal =</span> <span class="dv">240</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The van (22 kW charger, 100 kWh battery) covers its 240 km and charges entirely in hours <strong>00–05</strong>, at an annual cost of <strong>811.11</strong>. The driving itself spreads across all 24 hours, because nothing distinguishes them — a <em>degenerate</em> schedule again, and a useful prompt.</p>
+<p><strong>Exercises.</strong></p>
+<p><strong>5.2a</strong> Build it and confirm the 240 km is met and charging sits in the cheap window.</p>
+<p><strong>5.2b</strong> The driving schedule is degenerate. Add a delivery window — no driving before 07:00 or after 19:00 — with <code>af = data.frame(timeslice = &lt;night hours&gt;, cout.up = 0)</code>. Now when does it drive, and when does it charge?</p>
+<p><strong>5.2c</strong> Give the van a <strong>depot-only</strong> charger: <code>cinp.up = 0</code> except between 22:00 and 06:00. Does the route survive? What is the smallest battery that still works?</p>
+<p><strong>5.2d</strong> Compare against modelling the same van as a <code>newTechnology()</code> with an annual fuel demand. What question can the storage answer that the technology cannot?</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Why a constraint and not a coarse commodity
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The tidy way to say “240 km a day, hours free” would be to declare <code>KM</code> at a <code>DAY</code> timeframe and let the hourly driving aggregate up. That works for a <strong>technology</strong> — <code>eqTechOutTot</code> has a term that sums finer flows onto a coarser commodity — but the storage equivalent does not yet exist, so the model comes out infeasible. Until it does, the constraint above is the way to express it.</p>
+</div>
+</div>
+</section>
+<section id="sec-ev-shared" class="level2" data-number="7.3">
+<h2 data-number="7.3" class="anchored" data-anchor-id="sec-ev-shared"><span class="header-section-number">7.3</span> 5.3 — A shared charging post</h2>
+<p><em>Learning goal:</em> shared infrastructure as a <strong>capacity several processes compete for</strong>, and what congestion costs.</p>
+<p>Three cars, one post. Each car keeps its own 7 kW on-board charger — that is <code>@input$cap.up</code>, a property of the vehicle — but all three now draw through a single <code>POST</code> whose rating is the thing under study.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>post <span class="ot">&lt;-</span> <span class="fu">newTechnology</span>(</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"POST"</span>, <span class="at">input =</span> <span class="fu">list</span>(<span class="at">comm =</span> <span class="st">"ELC"</span>), <span class="at">output =</span> <span class="fu">list</span>(<span class="at">comm =</span> <span class="st">"CHG"</span>),</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">capacity =</span> <span class="fu">data.frame</span>(<span class="at">cap.up =</span> post_kw),</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">cap2act =</span> <span class="dv">8760</span>,                    <span class="co"># a technology defaults to 1 -&gt; state it</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">vintage =</span> <span class="fu">data.frame</span>(<span class="at">olife =</span> <span class="dv">10</span>L))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Sweeping the post rating, with the three cars needing 33.3 kWh between them:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: right;">post</th>
+<th style="text-align: right;">annual cost</th>
+<th style="text-align: right;">peak draw</th>
+<th style="text-align: right;">hours charging</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">21 kW</td>
+<td style="text-align: right;">608.33</td>
+<td style="text-align: right;">14.00 kW</td>
+<td style="text-align: right;">3</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">10 kW</td>
+<td style="text-align: right;">608.33</td>
+<td style="text-align: right;">10.00 kW</td>
+<td style="text-align: right;">4</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6 kW</td>
+<td style="text-align: right;">608.33</td>
+<td style="text-align: right;">6.00 kW</td>
+<td style="text-align: right;">6</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2 kW</td>
+<td style="text-align: right;"><strong>1387.00</strong></td>
+<td style="text-align: right;">2.00 kW</td>
+<td style="text-align: right;">18</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">1.2 kW</td>
+<td style="text-align: right;">infeasible</td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;"></td>
+</tr>
+</tbody>
+</table>
+<p>This is the whole story of shared charging in one table. Down to 6 kW the post costs nothing: there are exactly six cheap hours, and the fleet of three still fits all its charging inside them. Above that the post stops binding at all — the cars’ own 7 kW chargers become the limit, which is why the peak draw stops rising. Below 6 kW the fleet cannot fit, charging spills into the expensive evening, and the bill <strong>more than doubles</strong>. Keep shrinking and the energy cannot be delivered at all.</p>
+<p><strong>Exercises.</strong></p>
+<p><strong>5.3a</strong> Reproduce the sweep. Find the rating at which cost first rises — the point where the post starts binding — and explain why it is 6 kW and not something else. Then explain the <em>other</em> end: why does raising the post above 7 kW change nothing at all?</p>
+<p><strong>5.3b</strong> Give <code>POST</code> an <code>invcost</code> and let the model <em>size</em> it instead of asserting a rating. Does it choose the knee of the curve? Should it?</p>
+<p><strong>5.3c</strong> Stagger the fleet: give one car a morning commute and another an evening shift. Does the shared post get cheaper per car? This is the diversity-factor argument for shared infrastructure — make it quantitative.</p>
+<p><strong>5.3d</strong> Add vehicle-to-grid: let a car discharge back to <code>ELC</code> as well as to <code>KM</code>. You will need a second output commodity. Then check whether the model ever charges <em>and</em> discharges in the same hour — and if it does, work out how you would forbid it. (energyRt has no flag for this: a <code>@sharedThroughput</code> slot was tried and withdrawn, because for a single-commodity store the LP never does it anyway, and across different commodities the two flows are not in the same units to begin with.)</p>
+</section>
+<section id="where-this-connects" class="level2" data-number="7.4">
+<h2 data-number="7.4" class="anchored" data-anchor-id="where-this-connects"><span class="header-section-number">7.4</span> Where this connects</h2>
+<ul>
+<li><a href="04-special-processes.html#sec-ldv" class="quarto-xref"><span>Section 6.3</span></a> modelled vehicles as technologies. Everything there is still true for annual fuel accounting; this chapter is about <strong>timing</strong>, which needs storage.</li>
+<li><a href="04-special-processes.html" class="quarto-xref"><span>Chapter 6</span></a> introduced multi-input/multi-output processes; a storage with three different commodities is the same idea applied across time.</li>
+<li><code>storage_duration()</code> in energyRt splits a storage level into how long the energy actually sits there — see <a href="06-real-model.html#sec-duration" class="quarto-xref"><span>Section 8.14</span></a>, where it separates a battery that cycles daily from a hydrogen store that holds energy for months. On a car it would separate the overnight charge from the buffer that never empties.</li>
+</ul>
+<p><em>To be completed with worked solutions before the session.</em></p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./04-special-processes.html" class="pagination-link" aria-label="Special cases of processes">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Special cases of processes</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./06-real-model.html" class="pagination-link" aria-label="A real model, end to end">
+        <span class="nav-page-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">A real model, end to end</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.30">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>9&nbsp; Replication of PyPSA-Eur in energyRt – Energy System Modeling with R</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./06-real-model.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-b6a8276bf55561bdbc268162d41bd1f7.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-9e3e5b9121e68b3f077afb32f2c64d95.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Energy System Modeling with R</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="https://energyRt.org/use-R-2026"> 
+<span class="menu-text">Course info &amp; registration</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://mstdn.science/@optimal2050"> <i class="bi bi-mastodon" role="img" aria-label="optimal2050 on Mastodon">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/optimal2050/useR2026_ensys"> <i class="bi bi-github" role="img" aria-label="Course materials on GitHub">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./07-pypsa-replication.html">Case study</a></li><li class="breadcrumb-item"><a href="./07-pypsa-replication.html"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Replication of PyPSA-Eur in energyRt</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Preface</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./r-resources.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">R: setup and resources</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./installation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Installing energyRt</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Exercises</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-first-model.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Your first energy model</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-time-resolution.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Time resolution</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-regions-and-trade.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Regions and trade</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-special-processes.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Special cases of processes</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-electric-vehicles.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Electric vehicles: when to charge</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-real-model.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">A real model, end to end</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Case study</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-pypsa-replication.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Replication of PyPSA-Eur in energyRt</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#sec-families" id="toc-sec-families" class="nav-link active" data-scroll-target="#sec-families"><span class="header-section-number">9.1</span> Two model families, one problem</a></li>
+  <li><a href="#sec-mapping" id="toc-sec-mapping" class="nav-link" data-scroll-target="#sec-mapping"><span class="header-section-number">9.2</span> What was converted</a>
+  <ul class="collapse">
+  <li><a href="#sec-issues" id="toc-sec-issues" class="nav-link" data-scroll-target="#sec-issues"><span class="header-section-number">9.2.1</span> Nothing disappears quietly</a></li>
+  </ul></li>
+  <li><a href="#sec-seeing" id="toc-sec-seeing" class="nav-link" data-scroll-target="#sec-seeing"><span class="header-section-number">9.3</span> Seeing the model</a></li>
+  <li><a href="#sec-validation" id="toc-sec-validation" class="nav-link" data-scroll-target="#sec-validation"><span class="header-section-number">9.4</span> Validation</a>
+  <ul class="collapse">
+  <li><a href="#sec-validation-be" id="toc-sec-validation-be" class="nav-link" data-scroll-target="#sec-validation-be"><span class="header-section-number">9.4.1</span> Belgium, one node, full year</a></li>
+  <li><a href="#sec-validation-eu" id="toc-sec-validation-eu" class="nav-link" data-scroll-target="#sec-validation-eu"><span class="header-section-number">9.4.2</span> Europe, 41 nodes</a></li>
+  </ul></li>
+  <li><a href="#sec-differences" id="toc-sec-differences" class="nav-link" data-scroll-target="#sec-differences"><span class="header-section-number">9.5</span> Three real differences</a>
+  <ul class="collapse">
+  <li><a href="#sec-kvl" id="toc-sec-kvl" class="nav-link" data-scroll-target="#sec-kvl"><span class="header-section-number">9.5.1</span> 1. Kirchhoff versus transport</a></li>
+  <li><a href="#sec-weighting" id="toc-sec-weighting" class="nav-link" data-scroll-target="#sec-weighting"><span class="header-section-number">9.5.2</span> 2. Snapshot weighting versus calendar annualisation</a></li>
+  <li><a href="#sec-storage-shape" id="toc-sec-storage-shape" class="nav-link" data-scroll-target="#sec-storage-shape"><span class="header-section-number">9.5.3</span> 3. <code>Store</code> + two <code>Link</code>s versus one storage</a></li>
+  </ul></li>
+  <li><a href="#sec-price" id="toc-sec-price" class="nav-link" data-scroll-target="#sec-price"><span class="header-section-number">9.6</span> The price of generality</a></li>
+  <li><a href="#sec-limitations" id="toc-sec-limitations" class="nav-link" data-scroll-target="#sec-limitations"><span class="header-section-number">9.7</span> Limitations</a></li>
+  <li><a href="#sec-reproduce" id="toc-sec-reproduce" class="nav-link" data-scroll-target="#sec-reproduce"><span class="header-section-number">9.8</span> Reproduce it yourself</a></li>
+  <li><a href="#sec-credits" id="toc-sec-credits" class="nav-link" data-scroll-target="#sec-credits"><span class="header-section-number">9.9</span> Credits and licences</a></li>
+  <li><a href="#where-this-connects" id="toc-where-this-connects" class="nav-link" data-scroll-target="#where-this-connects"><span class="header-section-number">9.10</span> Where this connects</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./07-pypsa-replication.html">Case study</a></li><li class="breadcrumb-item"><a href="./07-pypsa-replication.html"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Replication of PyPSA-Eur in energyRt</span></a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title"><span id="sec-replication" class="quarto-section-identifier"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Replication of PyPSA-Eur in energyRt</span></span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>This chapter is a case study rather than an exercise. It takes a model built in another language, by another team, for another purpose, and rebuilds it in energyRt — then checks whether the rebuilt model does the same arithmetic.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(energyRt)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<section id="sec-families" class="level2" data-number="9.1">
+<h2 data-number="9.1" class="anchored" data-anchor-id="sec-families"><span class="header-section-number">9.1</span> Two model families, one problem</h2>
+<p><strong><a href="https://pypsa.org">PyPSA</a></strong> is a capacity-expansion model of the electric power sector, with extensions and links into other sectors. It is built for energy-transition studies with electricity at the centre, and that focus is a strength: it is an <em>ad-hoc and efficient</em> solution for exactly what it was made to do. Python.</p>
+<p><strong>energyRt</strong> is a macro energy-system model <strong>generator</strong>. It is designed for flexibility in describing technological processes and chains, for long-term energy and environmental policy evaluation. R.</p>
+<p>The two overlap enough to be comparable and differ enough to be interesting. The translation exercise has three purposes, in order of importance:</p>
+<ol type="1">
+<li><strong>Demonstrate an energy-modelling workflow in R</strong> using a model many people already know.</li>
+<li><strong>Validate</strong> that the translated model does the same mathematics. That is what the comparisons below are — a correctness check, not a benchmark and not a competition.</li>
+<li>Give course participants a European model to take away and investigate.</li>
+</ol>
+<p>There is a fourth thing worth naming up front, because it shapes everything in <a href="#sec-price" class="quarto-xref"><span>Section 9.6</span></a>: converting an ad-hoc model with roughly <strong>ten sets of constraints</strong> into a general system with roughly <strong>a hundred pre-built ones</strong> buys expandability and a broader range of applications, and costs model size. That cost was the intent from the beginning, not a defect discovered afterwards.</p>
+<div class="callout callout-style-simple callout-note">
+<div class="callout-body d-flex">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-body-container">
+<p>This is <strong>not</strong> the first attempt. <a href="https://opendecarbonization.github.io/revaluation/"><strong>revaluation</strong></a> (2023) translated PyPSA models into both energyRt and <a href="https://switch-model.org">Switch</a>. This version was completed with the help of AI — Claude, by Anthropic.</p>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-mapping" class="level2" data-number="9.2">
+<h2 data-number="9.2" class="anchored" data-anchor-id="sec-mapping"><span class="header-section-number">9.2</span> What was converted</h2>
+<p>The conversion reads a PyPSA-Eur network at the <code>base_s_{clusters}_elec.nc</code> cut point — after the network is built, before <code>prepare_network.py</code> applies policy overlays and temporal averaging — and maps each component onto energyRt objects.</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>PyPSA</th>
+<th>energyRt</th>
+<th>note</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>Generator</code></td>
+<td><code>technology</code> + <code>weather</code></td>
+<td>grouped by carrier; the time series becomes a weather factor</td>
+</tr>
+<tr class="even">
+<td><code>Load</code></td>
+<td><code>demand</code></td>
+<td></td>
+</tr>
+<tr class="odd">
+<td><code>Line</code> (AC)</td>
+<td><code>trade</code></td>
+<td>merged by bus pair; <strong>KVL not reproduced</strong></td>
+</tr>
+<tr class="even">
+<td><code>Link</code> (DC)</td>
+<td><code>trade</code></td>
+<td>merged by bus pair</td>
+</tr>
+<tr class="odd">
+<td><code>Link</code> (converter)</td>
+<td><code>technology</code></td>
+<td>charger / discharger</td>
+</tr>
+<tr class="even">
+<td><code>StorageUnit</code></td>
+<td><code>storage</code></td>
+<td>with inflow: decomposed into supply + storage + technology</td>
+</tr>
+<tr class="odd">
+<td><code>Store</code></td>
+<td><code>storage</code></td>
+<td>reservoir</td>
+</tr>
+<tr class="even">
+<td>carriers</td>
+<td><code>commodity</code> (+ <code>supply</code>)</td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<p>For the 41-node European network — 123 buses, 77 AC lines, 213 links, 397 generators, 59 storage units, 82 stores, 8,760 hourly snapshots — that produces <strong>147 energyRt objects</strong> in about 11 seconds:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>eu   <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"data/eu41_model.rds"</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>repo <span class="ot">&lt;-</span> eu<span class="sc">@</span>data[[<span class="dv">1</span>]]</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(repo)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<pre><code> commodity  demand  storage  supply  technology  trade  weather
+        13       1        4       9          21     92        7</code></pre>
+<section id="sec-issues" class="level3" data-number="9.2.1">
+<h3 data-number="9.2.1" class="anchored" data-anchor-id="sec-issues"><span class="header-section-number">9.2.1</span> Nothing disappears quietly</h3>
+<p>The conversion has one rule that matters more than any mapping decision: <strong>detect, name, record, exclude — never clamp, never invent.</strong> A parameter that cannot be represented is reported and its entity dropped; it is never quietly replaced with a plausible number.</p>
+<p>Every PyPSA row is therefore either mapped or listed as dropped. On the 41-node network, 18 entities were excluded and 16 more kept with a warning:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 23%">
+<col style="width: 23%">
+<col style="width: 30%">
+<col style="width: 23%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>rule</th>
+<th>severity</th>
+<th style="text-align: right;">n</th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>link_zero_capacity</code></td>
+<td>blocker</td>
+<td style="text-align: right;">16</td>
+<td>transmission link with no capacity (TYNDP candidate project)</td>
+</tr>
+<tr class="even">
+<td><code>storage_subhourly_duration</code></td>
+<td>blocker</td>
+<td style="text-align: right;">1</td>
+<td>duration below one hour; cannot cycle at hourly resolution</td>
+</tr>
+<tr class="odd">
+<td><code>storage_zero_duration</code></td>
+<td>blocker</td>
+<td style="text-align: right;">1</td>
+<td>reservoir with no storage capacity (<code>max_hours = 0</code>)</td>
+</tr>
+<tr class="even">
+<td><code>line_zero_impedance</code></td>
+<td>warning</td>
+<td style="text-align: right;">13</td>
+<td>no impedance data; <code>teff</code> cannot be derived, set to 1</td>
+</tr>
+<tr class="odd">
+<td><code>storage_multiyear_duration</code></td>
+<td>warning</td>
+<td style="text-align: right;">3</td>
+<td>duration exceeds a year; usually a small <code>p_nom</code> on a real reservoir</td>
+</tr>
+</tbody>
+</table>
+<p>This is the part of a conversion most worth reading. A model that silently clamped a 28-second pumped-hydro plant to half an hour would build, solve, and mean nothing.</p>
+</section>
+</section>
+<section id="sec-seeing" class="level2" data-number="9.3">
+<h2 data-number="9.3" class="anchored" data-anchor-id="sec-seeing"><span class="header-section-number">9.3</span> Seeing the model</h2>
+<p>Once converted, the objects are ordinary energyRt objects and the usual tools work on them.</p>
+<p><code>getObject()</code> fetches by name or by class, named without the repository prefix:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">draw</span>(<span class="fu">getObject</span>(eu, <span class="at">name =</span> <span class="st">"E_CCGT"</span>)[[<span class="dv">1</span>]])   <span class="co"># the chain: GAS in, ELC out</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">draw</span>(<span class="fu">getObject</span>(eu, <span class="at">name =</span> <span class="st">"STG_H2"</span>)[[<span class="dv">1</span>]])   <span class="co"># the three-role storage</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">autoplot</span>(<span class="fu">getObject</span>(eu, <span class="at">class =</span> <span class="st">"supply"</span>)[[<span class="dv">1</span>]], <span class="at">interpolate =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co"># `style = "line"`; the default "area" style needs a year to stack on, and this</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co"># model carries `year = NA` as a wildcard, which yields "no rows to aggregate".</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">autoplot</span>(<span class="fu">getObject</span>(eu, <span class="at">name =</span> <span class="st">"DEM_ELC"</span>)[[<span class="dv">1</span>]], <span class="at">style =</span> <span class="st">"line"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Weather factors are where a converted model is easiest to sanity-check, because mistakes are visible. <code>autoplot.weather()</code> draws a heatmap by default — hour of day against day of year — so a solar profile that is bright at midnight tells you immediately that something is wrong with the time mapping:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>w <span class="ot">&lt;-</span> <span class="fu">getObject</span>(eu, <span class="at">class =</span> <span class="st">"weather"</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a><span class="co"># `region` picks a subset: a number takes that many, or name them explicitly.</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Without it all 41 regions are faceted onto one plot and only the strip labels</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a><span class="co"># remain legible.</span></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a><span class="fu">autoplot</span>(w[[<span class="st">"W_SOLAR"</span>]], <span class="at">region =</span> <span class="dv">2</span>)          <span class="co"># heatmap is the default style</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a><span class="fu">autoplot</span>(w[[<span class="st">"W_ONWIND"</span>]], <span class="at">region =</span> <span class="st">"BE0_0"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</section>
+<section id="sec-validation" class="level2" data-number="9.4">
+<h2 data-number="9.4" class="anchored" data-anchor-id="sec-validation"><span class="header-section-number">9.4</span> Validation</h2>
+<p>Two models solving the same problem should reach the same number. Whether they do is the whole question.</p>
+<section id="sec-validation-be" class="level3" data-number="9.4.1">
+<h3 data-number="9.4.1" class="anchored" data-anchor-id="sec-validation-be"><span class="header-section-number">9.4.1</span> Belgium, one node, full year</h3>
+<p>The cleanest test available is Belgium as a <strong>copperplate</strong>: one AC bus, no lines, the full 8,760-hour year. It removes both of the things that could otherwise excuse a difference — there is no transmission, so no Kirchhoff-versus-transport gap, and it is a full year, so the annualisation weighting is simply <code>1</code> on both sides.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th></th>
+<th style="text-align: right;">energyRt</th>
+<th style="text-align: right;">PyPSA</th>
+<th style="text-align: right;">difference</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>base</td>
+<td style="text-align: right;">8,260,626,305.45</td>
+<td style="text-align: right;">8,260,626,305.45</td>
+<td style="text-align: right;"><strong>0.00</strong></td>
+</tr>
+<tr class="even">
+<td>demand doubled</td>
+<td style="text-align: right;">13,387,554,321.05</td>
+<td style="text-align: right;">13,387,554,321.06</td>
+<td style="text-align: right;"><strong>0.01</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Identical to the cent. The capacity-expansion answer matches too — <strong>31,162.8 MW built on both sides</strong> under doubled demand, each technology within 0.05 MW (<a href="06-real-model.html#sec-growth" class="quarto-xref"><span>Section 8.13</span></a> works through this case as an exercise).</p>
+</section>
+<section id="sec-validation-eu" class="level3" data-number="9.4.2">
+<h3 data-number="9.4.2" class="anchored" data-anchor-id="sec-validation-eu"><span class="header-section-number">9.4.2</span> Europe, 41 nodes</h3>
+<p>The full European network at hourly resolution is about 28 million variables, which no open solver will take. Sampling four representative days — mid-January, April, July and October — gives 96 timeslices and ~326,000 variables, which solves in under three minutes.</p>
+<table class="caption-top table">
+<tbody>
+<tr class="odd">
+<td>energyRt</td>
+<td style="text-align: right;">78,474,565,582</td>
+</tr>
+<tr class="even">
+<td>PyPSA (transport)</td>
+<td style="text-align: right;">78,426,977,892</td>
+</tr>
+<tr class="odd">
+<td><strong>difference</strong></td>
+<td style="text-align: right;"><strong>+0.0607%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Every capacity matches to four decimal places, demand is exact, and weather-driven generation agrees to eight significant figures — which is independent evidence that both models are reading the same 96 hours.</p>
+<div class="callout callout-style-simple callout-important">
+<div class="callout-body d-flex">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-body-container">
+<p><strong>Compare <code>objective_total</code>, not <code>objective</code>.</strong> PyPSA leaves the capital cost of non-extendable plant out of <code>n.objective</code> and reports it separately as <code>objective_constant</code>. energyRt puts everything in one number. Add PyPSA’s two together before comparing, or the two models will appear to disagree by an order of magnitude when they do not.</p>
+</div>
+</div>
+</div>
+</section>
+</section>
+<section id="sec-differences" class="level2" data-number="9.5">
+<h2 data-number="9.5" class="anchored" data-anchor-id="sec-differences"><span class="header-section-number">9.5</span> Three real differences</h2>
+<p>Where the models genuinely differ, they differ for reasons worth understanding.</p>
+<section id="sec-kvl" class="level3" data-number="9.5.1">
+<h3 data-number="9.5.1" class="anchored" data-anchor-id="sec-kvl"><span class="header-section-number">9.5.1</span> 1. Kirchhoff versus transport</h3>
+<p>PyPSA imposes Kirchhoff’s voltage law on AC cycles: power flows according to impedance, not according to what would be cheapest. energyRt’s <code>trade</code> is a <strong>transport</strong> formulation — flow is bounded by capacity and otherwise free.</p>
+<p>Transport is a relaxation, so it can only be cheaper. How much cheaper depends entirely on the network:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 20%">
+<col style="width: 26%">
+<col style="width: 26%">
+<col style="width: 26%">
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th style="text-align: right;">KVL</th>
+<th style="text-align: right;">transport</th>
+<th style="text-align: right;">gap</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Belgium copperplate (0 lines)</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;">—</td>
+<td style="text-align: right;"><strong>none possible</strong></td>
+</tr>
+<tr class="even">
+<td>Europe, 41 nodes (77 AC lines)</td>
+<td style="text-align: right;">675,336,409</td>
+<td style="text-align: right;">652,485,728</td>
+<td style="text-align: right;"><strong>3.38%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>At one node the difference cannot exist. At 41 nodes it is 3.38%, and that is the honest size of the paradigm gap between the two tools.</p>
+</section>
+<section id="sec-weighting" class="level3" data-number="9.5.2">
+<h3 data-number="9.5.2" class="anchored" data-anchor-id="sec-weighting"><span class="header-section-number">9.5.2</span> 2. Snapshot weighting versus calendar annualisation</h3>
+<p>This one is small in appearance and decisive in effect.</p>
+<p>PyPSA scales operating cost by <code>snapshot_weightings.objective</code> and charges capital as a full annual annuity regardless. On a <em>sampled</em> network PyPSA-Eur leaves that weighting at <strong>1</strong>, so the model pays a year of capital against only the sampled hours of fuel. energyRt instead derives <code>pTimesliceWeight</code> from the calendar as <code>1/year_fraction</code>, which <strong>annualises</strong> operating cost.</p>
+<p>On a full year the two coincide and the question never arises. On a 168-hour sample of Belgium they do not, and the consequence is not subtle:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 28%">
+<col style="width: 28%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>weighting</th>
+<th style="text-align: right;">objective</th>
+<th style="text-align: right;">CO₂</th>
+<th>what runs</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>PyPSA’s (w = 1)</td>
+<td style="text-align: right;">164,899,752</td>
+<td style="text-align: right;">274,037 t</td>
+<td>gas, nuclear, waste, biomass, oil</td>
+</tr>
+<tr class="even">
+<td>annualised (w = 52.14)</td>
+<td style="text-align: right;">245,652,738</td>
+<td style="text-align: right;"><strong>0</strong></td>
+<td>H₂ charge/discharge only</td>
+</tr>
+</tbody>
+</table>
+<p>The same model, the same data, one convention apart — and in one of them the system has no fossil fleet at all and nothing for a carbon price to act on. Neither is wrong. They answer different questions, and a comparison must state which one it is asking.</p>
+</section>
+<section id="sec-storage-shape" class="level3" data-number="9.5.3">
+<h3 data-number="9.5.3" class="anchored" data-anchor-id="sec-storage-shape"><span class="header-section-number">9.5.3</span> 3. <code>Store</code> + two <code>Link</code>s versus one storage</h3>
+<p>PyPSA builds a hydrogen system from three components: a <code>Store</code> for the gas, a <code>Link</code> for the electrolyser, and a <code>Link</code> for the fuel cell. energyRt’s <code>storage</code> carries three commodity roles — <code>@input</code>, <code>@storage</code>, <code>@output</code> — so the same system can be one object.</p>
+<p>A consequence worth knowing when reading results: <strong>PyPSA rates a <code>Link</code> on its input bus; energyRt rates a technology on its activity.</strong> The Belgian electrolyser confirms the rule exactly — PyPSA 162.058 MW × 0.6994 efficiency = 113.3434, which is energyRt’s figure to four decimals.</p>
+</section>
+</section>
+<section id="sec-price" class="level2" data-number="9.6">
+<h2 data-number="9.6" class="anchored" data-anchor-id="sec-price"><span class="header-section-number">9.6</span> The price of generality</h2>
+<p>energyRt solves the same problem with a substantially larger linear program:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th></th>
+<th style="text-align: right;">rows</th>
+<th style="text-align: right;">columns</th>
+<th>after presolve</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>energyRt</td>
+<td style="text-align: right;">349,557</td>
+<td style="text-align: right;">326,345</td>
+<td>78,688 × 115,820</td>
+</tr>
+<tr class="even">
+<td>PyPSA</td>
+<td style="text-align: right;">207,673</td>
+<td style="text-align: right;">102,332</td>
+<td>51,022 × 81,624</td>
+</tr>
+</tbody>
+</table>
+<p><strong>3.2× the columns for identical physics</strong>, and the same ratio shows up in time and memory: ~146 s and 0.76 GB (R) + 1.93 GB (Julia) against PyPSA’s ~12 s and 0.71 GB.</p>
+<p>Presolve removes 64% of energyRt’s columns, which tells you what they are: <strong>definitional</strong>. energyRt materialises <code>vTechInp</code>, <code>vTechOut</code>, <code>vTechAct</code>, <code>vInpTot</code>, <code>vOutTot</code>, <code>vTechInpTot</code> and their relatives as explicit variables where PyPSA folds the same relationships into expressions.</p>
+<p>That is the trade, and it was deliberate:</p>
+<ul>
+<li><strong>What it costs.</strong> A larger LP, more memory, longer solves.</li>
+<li><strong>What it buys.</strong> A hundred pre-built constraint sets instead of ten, so the same model can be extended into sectors, processes and policies the original was never built for — and every flow in the system is directly reportable through <code>getData()</code>, because it is a variable rather than an expression.</li>
+</ul>
+<p>A model built for one job will always beat a generator at that job. The generator earns its keep on the second job.</p>
+</section>
+<section id="sec-limitations" class="level2" data-number="9.7">
+<h2 data-number="9.7" class="anchored" data-anchor-id="sec-limitations"><span class="header-section-number">9.7</span> Limitations</h2>
+<p>Stated plainly, because this material is for training:</p>
+<ul>
+<li><strong>Training use only.</strong> The validity checks reproduced results in the cases shown here; they are not a certification of the converter.</li>
+<li><strong>The full-year 41-node model has never been solved.</strong> The European comparison rests on a four-day sample. A full-year continental solve is future work.</li>
+<li><strong>No deeper comparison has been done</strong> — no sensitivity analysis, no scenario ensemble, no investigation of where the formulations diverge under stress.</li>
+<li>The four-day sample <strong>cannot represent seasonal storage</strong>: state of charge carries across the seams between disjoint days, so long-duration storage is understated by construction.</li>
+</ul>
+<p>The model and converter are handed to participants for further investigation. If you find something wrong, that is a useful outcome of the exercise.</p>
+</section>
+<section id="sec-reproduce" class="level2" data-number="9.8">
+<h2 data-number="9.8" class="anchored" data-anchor-id="sec-reproduce"><span class="header-section-number">9.8</span> Reproduce it yourself</h2>
+<p>Both artefacts ship with the course:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>eu <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"data/eu41_model.rds"</span>)          <span class="co"># the converted 41-node model</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="fu">getCalendar</span>(eu)                                <span class="co"># 8760 timeslices, full year</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">readRDS</span>(<span class="st">"data/eu41_provenance.rds"</span>)            <span class="co"># coverage table + issue register</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>To solve it you need a sampled calendar, because the full-resolution model is intractable. A model holds the <strong>whole</strong> calendar; a scenario may be solved on a <strong>subset</strong> of its timeslices:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>yday_sample <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">15</span>, <span class="dv">105</span>, <span class="dv">196</span>, <span class="dv">288</span>)            <span class="co"># mid-Jan / Apr / Jul / Oct</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>tt  <span class="ot">&lt;-</span> data.table<span class="sc">::</span><span class="fu">as.data.table</span>(<span class="fu">getCalendar</span>(eu)<span class="sc">@</span>timetable)</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>sub <span class="ot">&lt;-</span> tt[YDAY <span class="sc">%in%</span> <span class="fu">yday2YDAY</span>(yday_sample) <span class="sc">&amp;</span> HOUR <span class="sc">%in%</span> <span class="fu">hour2HOUR</span>(<span class="dv">0</span><span class="sc">:</span><span class="dv">23</span>)]</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>sub <span class="ot">&lt;-</span> sub[, .SD, .SDcols <span class="ot">=</span> <span class="fu">setdiff</span>(<span class="fu">names</span>(sub), <span class="st">"weight"</span>)]</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a>cal4 <span class="ot">&lt;-</span> <span class="fu">newCalendar</span>(<span class="st">"d365_h24_subset_4days"</span>,</span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true" tabindex="-1"></a>                    <span class="at">timetable     =</span> sub,</span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true" tabindex="-1"></a>                    <span class="at">year_fraction =</span> <span class="fu">sum</span>(sub<span class="sc">$</span>share))</span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb8-10"><a href="#cb8-10" aria-hidden="true" tabindex="-1"></a>scen <span class="ot">&lt;-</span> <span class="fu">interpolate_model</span>(eu, cal4, <span class="at">name =</span> <span class="st">"eu41_4d"</span>)</span>
+<span id="cb8-11"><a href="#cb8-11" aria-hidden="true" tabindex="-1"></a><span class="fu">model_size</span>(scen)</span>
+<span id="cb8-12"><a href="#cb8-12" aria-hidden="true" tabindex="-1"></a>sol <span class="ot">&lt;-</span> <span class="fu">solve_scen</span>(scen, <span class="at">solver =</span> solver_options<span class="sc">$</span>julia_highs)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="callout callout-style-simple callout-warning">
+<div class="callout-body d-flex">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-body-container">
+<p>Two traps in <code>newCalendar()</code>, each of which costs a failed run:</p>
+<ul>
+<li>The timetable must stay a <strong>data.table</strong> — <code>.complete_calendar()</code> indexes <code>dtf[, weight]</code> with data.table semantics, and a plain <code>data.frame</code> fails with <code>object 'weight' not found</code>.</li>
+<li><strong>Keep <code>timeslice</code>, drop <code>weight</code>.</strong> The check needs <code>timeslice</code>; but <code>weight</code> must be absent so the constructor recomputes <code>1/sum(share)</code> for the sample instead of inheriting the parent calendar’s value. Passing the parent’s weight through silently gives the sample full-year weighting — <a href="#sec-weighting" class="quarto-xref"><span>Section 9.5.2</span></a> is what that costs.</li>
+</ul>
+</div>
+</div>
+</div>
+<p>The source network is shipped too (<code>data/base_s_41_elec.nc</code>, 14.8 MB), so the conversion itself can be re-run with the <code>PyPSA-Eur-to-energyRt</code> converter.</p>
+</section>
+<section id="sec-credits" class="level2" data-number="9.9">
+<h2 data-number="9.9" class="anchored" data-anchor-id="sec-credits"><span class="header-section-number">9.9</span> Credits and licences</h2>
+<p><strong>Prior art.</strong> <a href="https://opendecarbonization.github.io/revaluation/"><strong>revaluation</strong></a> (2023) translated PyPSA models into energyRt and into Switch. This version was completed with the help of AI — Claude, by Anthropic.</p>
+<p><strong>Software.</strong> PyPSA-Eur (MIT / CC-BY-4.0 / CC0-1.0 per component, see its <code>REUSE.toml</code>), PyPSA, atlite, energyRt.</p>
+<p><strong>Data.</strong> The converted model embeds real data, so its licences travel with it. The full table is in <a href="06-real-model.html#sec-licences" class="quarto-xref"><span>Section 8.16</span></a>; the two entries that need care are repeated here because they are easy to miss:</p>
+<ul>
+<li><strong>OpenStreetMap is ODbL-1.0.</strong> The grid capacities in the <code>trade</code> objects descend from OSM, so a redistributed derivative carries attribution and share-alike obligations. Not a commercial restriction.</li>
+<li><strong>The demand series licence is unresolved.</strong> PyPSA-Eur’s own data inventory records <code>entsoe_electricity_demand</code> and <code>opsd_electricity_demand</code> as licence <strong>unknown</strong>.</li>
+</ul>
+<p>The two entries in that inventory that <em>do</em> restrict commercial use or redistribution — Eurostat <code>lau_regions</code> and BGR <code>aquifer_data</code> — are sector-coupling inputs and are <strong>not present</strong> in this electricity-only build.</p>
+</section>
+<section id="where-this-connects" class="level2" data-number="9.10">
+<h2 data-number="9.10" class="anchored" data-anchor-id="where-this-connects"><span class="header-section-number">9.10</span> Where this connects</h2>
+<p><a href="06-real-model.html" class="quarto-xref"><span>Chapter 8</span></a> used a converted Belgian model as a teaching object without asking where its numbers came from. This chapter is that question answered: what was mapped, what was dropped, what matches, and what does not.</p>
+<p>The result worth remembering is not the agreement — two correct implementations of the same linear program <em>should</em> agree. It is that establishing the agreement required pinning down three conventions (network paradigm, snapshot weighting, component rating) that are invisible until you compare, and any one of which could have been mistaken for a modelling error.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./06-real-model.html" class="pagination-link" aria-label="A real model, end to end">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">A real model, end to end</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

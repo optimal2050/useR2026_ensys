@@ -1,0 +1,2033 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.30">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>8&nbsp; A real model, end to end – Energy System Modeling with R</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./07-pypsa-replication.html" rel="next">
+<link href="./05-electric-vehicles.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-b6a8276bf55561bdbc268162d41bd1f7.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-9e3e5b9121e68b3f077afb32f2c64d95.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "navbar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "end",
+  "type": "overlay",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+
+</head>
+
+<body class="nav-sidebar floating nav-fixed quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+    <nav class="navbar navbar-expand-lg " data-bs-theme="dark">
+      <div class="navbar-container container-fluid">
+      <div class="navbar-brand-container mx-auto">
+    <a class="navbar-brand" href="./index.html">
+    <span class="navbar-title">Energy System Modeling with R</span>
+    </a>
+  </div>
+            <div id="quarto-search" class="" title="Search"></div>
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarCollapse" aria-controls="navbarCollapse" role="menu" aria-expanded="false" aria-label="Toggle navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+  <span class="navbar-toggler-icon"></span>
+</button>
+          <div class="collapse navbar-collapse" id="navbarCollapse">
+            <ul class="navbar-nav navbar-nav-scroll ms-auto">
+  <li class="nav-item">
+    <a class="nav-link" href="https://energyRt.org/use-R-2026"> 
+<span class="menu-text">Course info &amp; registration</span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://mstdn.science/@optimal2050"> <i class="bi bi-mastodon" role="img" aria-label="optimal2050 on Mastodon">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+  <li class="nav-item compact">
+    <a class="nav-link" href="https://github.com/optimal2050/useR2026_ensys"> <i class="bi bi-github" role="img" aria-label="Course materials on GitHub">
+</i> 
+<span class="menu-text"></span></a>
+  </li>  
+</ul>
+          </div> <!-- /navcollapse -->
+            <div class="quarto-navbar-tools">
+</div>
+      </div> <!-- /container-fluid -->
+    </nav>
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./01-first-model.html">Exercises</a></li><li class="breadcrumb-item"><a href="./06-real-model.html"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">A real model, end to end</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article page-navbar">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text">Preface</span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./r-resources.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">R: setup and resources</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./installation.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Installing energyRt</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true">
+ <span class="menu-text">Exercises</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-1" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-1" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./01-first-model.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Your first energy model</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./02-time-resolution.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Time resolution</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./03-regions-and-trade.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Regions and trade</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./04-special-processes.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Special cases of processes</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-electric-vehicles.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Electric vehicles: when to charge</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-real-model.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">A real model, end to end</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Case study</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-pypsa-replication.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Replication of PyPSA-Eur in energyRt</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#sec-be-data" id="toc-sec-be-data" class="nav-link active" data-scroll-target="#sec-be-data"><span class="header-section-number">8.1</span> The dataset</a></li>
+  <li><a href="#sec-choose" id="toc-sec-choose" class="nav-link" data-scroll-target="#sec-choose"><span class="header-section-number">8.2</span> Choosing a model</a></li>
+  <li><a href="#sec-solve" id="toc-sec-solve" class="nav-link" data-scroll-target="#sec-solve"><span class="header-section-number">8.3</span> 6.1 — Solve it</a></li>
+  <li><a href="#sec-size" id="toc-sec-size" class="nav-link" data-scroll-target="#sec-size"><span class="header-section-number">8.4</span> 6.2 — How big is it?</a></li>
+  <li><a href="#sec-shrink" id="toc-sec-shrink" class="nav-link" data-scroll-target="#sec-shrink"><span class="header-section-number">8.5</span> 6.3 — Shrink it: sparse, prune, fold, trim</a></li>
+  <li><a href="#sec-sample" id="toc-sec-sample" class="nav-link" data-scroll-target="#sec-sample"><span class="header-section-number">8.6</span> A sampled calendar</a></li>
+  <li><a href="#sec-backends" id="toc-sec-backends" class="nav-link" data-scroll-target="#sec-backends"><span class="header-section-number">8.7</span> 6.4 — Different back-ends</a></li>
+  <li><a href="#sec-horizon" id="toc-sec-horizon" class="nav-link" data-scroll-target="#sec-horizon"><span class="header-section-number">8.8</span> 6.5 — A planning horizon to 2050</a></li>
+  <li><a href="#sec-retire" id="toc-sec-retire" class="nav-link" data-scroll-target="#sec-retire"><span class="header-section-number">8.9</span> 6.6 — Endogenous retirement</a></li>
+  <li><a href="#sec-tax" id="toc-sec-tax" class="nav-link" data-scroll-target="#sec-tax"><span class="header-section-number">8.10</span> 6.7 — A carbon tax</a></li>
+  <li><a href="#sec-cap" id="toc-sec-cap" class="nav-link" data-scroll-target="#sec-cap"><span class="header-section-number">8.11</span> 6.8 — A carbon cap</a></li>
+  <li><a href="#sec-compare" id="toc-sec-compare" class="nav-link" data-scroll-target="#sec-compare"><span class="header-section-number">8.12</span> 6.9 — Compare the scenarios</a></li>
+  <li><a href="#sec-growth" id="toc-sec-growth" class="nav-link" data-scroll-target="#sec-growth"><span class="header-section-number">8.13</span> 6.10 — Demand doubles by 2050</a></li>
+  <li><a href="#sec-duration" id="toc-sec-duration" class="nav-link" data-scroll-target="#sec-duration"><span class="header-section-number">8.14</span> 6.11 — How long is your storage?</a></li>
+  <li><a href="#sec-provenance" id="toc-sec-provenance" class="nav-link" data-scroll-target="#sec-provenance"><span class="header-section-number">8.15</span> How this model was derived</a></li>
+  <li><a href="#sec-licences" id="toc-sec-licences" class="nav-link" data-scroll-target="#sec-licences"><span class="header-section-number">8.16</span> Data licences</a></li>
+  <li><a href="#where-this-connects" id="toc-where-this-connects" class="nav-link" data-scroll-target="#where-this-connects"><span class="header-section-number">8.17</span> Where this connects</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default"><nav class="quarto-page-breadcrumbs quarto-title-breadcrumbs d-none d-lg-block" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./01-first-model.html">Exercises</a></li><li class="breadcrumb-item"><a href="./06-real-model.html"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">A real model, end to end</span></a></li></ol></nav>
+<div class="quarto-title">
+<h1 class="title"><span id="sec-realmodel" class="quarto-section-identifier"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">A real model, end to end</span></span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<p>Every model so far you built by hand, object by object, small enough to hold in your head. This chapter starts from the other end: a model <strong>derived from <a href="https://pypsa-eur.readthedocs.io">PyPSA-Eur</a></strong> — Belgium, five nodes, one week of hourly detail, real plant, real weather, real demand — and does the things you actually do with a model you did not write.</p>
+<p>Solve it. Measure it. Shrink it. Stretch it to 2050. Let it retire its own plant. Price its carbon, then cap it. Compare what changed.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(energyRt)</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggplot2)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="callout callout-style-simple callout-note">
+<div class="callout-body d-flex">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-body-container">
+<p>Nothing executes at render (<code>eval: false</code> site-wide). The numbers quoted in the text come from a local run and are there so you can tell whether yours went right — not as values to reproduce exactly.</p>
+</div>
+</div>
+</div>
+<section id="sec-be-data" class="level2" data-number="8.1">
+<h2 data-number="8.1" class="anchored" data-anchor-id="sec-be-data"><span class="header-section-number">8.1</span> The dataset</h2>
+<p>The model ships with the course as one serialised object. It is not a PyPSA file and needs no Python: the conversion already happened (see <a href="#sec-provenance" class="quarto-xref"><span>Section 8.15</span></a> for how, and <a href="#sec-licences" class="quarto-xref"><span>Section 8.16</span></a> for the data licences).</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>cp   <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"data/belgium_copperplate.rds"</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>repo <span class="ot">&lt;-</span> cp<span class="sc">@</span>data[[<span class="dv">1</span>]]</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(repo)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Belgium as a <strong>copperplate</strong>: one node, no transmission, the full 8,760-hour year. Small in objects, large in time.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">getCalendar</span>(cp)        <span class="co"># 8760 timeslices, year_fraction = 1</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">getHorizon</span>(cp)         <span class="co"># a single milestone year, 2050</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>cp<span class="sc">@</span>config<span class="sc">@</span>region       <span class="co"># one region</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Three things are worth naming before you use it.</p>
+<p><strong>No transmission.</strong> With one node there are no lines, so nothing in this chapter depends on how power flow is modelled. <a href="07-pypsa-replication.html" class="quarto-xref"><span>Chapter 9</span></a> shows what changes when there are 77 AC lines.</p>
+<p><strong>A full year, so the weighting is simply correct.</strong> <code>year_fraction = 1</code> and <code>pTimesliceWeight = 1</code>. Operating cost and capital cost are both annual, with no convention to choose. That is <em>not</em> true of a sampled model, and <a href="#sec-provenance" class="quarto-xref"><span>Section 8.15</span></a> explains what it costs when it is not.</p>
+<p><strong>Fuel is free at the supply.</strong> PyPSA puts fuel cost on the generator, not the fuel, so <code>SUP_GAS</code> costs 0 and the price sits in each technology’s <code>varom</code>. Carbon, though, rides on the <em>commodity</em>:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>emitters <span class="ot">&lt;-</span> <span class="fu">Filter</span>(<span class="cf">function</span>(x) <span class="fu">NROW</span>(x<span class="sc">@</span>emis), <span class="fu">getObject</span>(cp, <span class="at">class =</span> <span class="st">"commodity"</span>))</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">lapply</span>(emitters, <span class="cf">function</span>(x) <span class="fu">cbind</span>(<span class="at">comm =</span> x<span class="sc">@</span>name, x<span class="sc">@</span>emis))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p><code>GAS</code> emits 0.198 t CO₂ per unit, <code>OIL</code> and <code>WST</code> 0.2571. That is what <a href="#sec-tax" class="quarto-xref"><span>Section 8.10</span></a> and <a href="#sec-cap" class="quarto-xref"><span>Section 8.11</span></a> act on.</p>
+</section>
+<section id="sec-choose" class="level2" data-number="8.2">
+<h2 data-number="8.2" class="anchored" data-anchor-id="sec-choose"><span class="header-section-number">8.2</span> Choosing a model</h2>
+<p>Three converted models ship with the course. They are the <em>same</em> conversion at three sizes, so anything you write for one runs on the others.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>file</th>
+<th style="text-align: right;">regions</th>
+<th style="text-align: right;">timeslices</th>
+<th style="text-align: right;">on disk</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>belgium_copperplate.rds</code></td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">8,760</td>
+<td style="text-align: right;">0.28 MB</td>
+</tr>
+<tr class="even">
+<td><code>belgium_model.rds</code></td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">168</td>
+<td style="text-align: right;">0.02 MB</td>
+</tr>
+<tr class="odd">
+<td><code>eu41_model.rds</code></td>
+<td style="text-align: right;">41</td>
+<td style="text-align: right;">8,760</td>
+<td style="text-align: right;">12.7 MB</td>
+</tr>
+</tbody>
+</table>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>be5 <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"data/belgium_model.rds"</span>)     <span class="co"># 5 Belgian nodes, one week</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>eu  <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"data/eu41_model.rds"</span>)        <span class="co"># 41 European nodes, full year</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(eu<span class="sc">@</span>data[[<span class="dv">1</span>]])</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Swapping the model changes what the chapter costs to run:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 30%">
+<col style="width: 40%">
+<col style="width: 30%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>model</th>
+<th style="text-align: right;">variables</th>
+<th>solve</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>copperplate, full year</td>
+<td style="text-align: right;">~473,000</td>
+<td>~4½ minutes</td>
+</tr>
+<tr class="even">
+<td>copperplate, sampled (below)</td>
+<td style="text-align: right;">~15,600</td>
+<td>~20 seconds</td>
+</tr>
+<tr class="odd">
+<td>5-node Belgium, one week</td>
+<td style="text-align: right;">~40,000</td>
+<td>~25 seconds</td>
+</tr>
+<tr class="even">
+<td>41-node Europe, full year</td>
+<td style="text-align: right;">~28 <strong>million</strong></td>
+<td>no open solver will take it</td>
+</tr>
+</tbody>
+</table>
+<p>Two pieces of advice if you go to the European model:</p>
+<ul>
+<li><strong>Use Julia/HiGHS</strong> (<code>solver_options$julia_highs</code>). GLPK is a teaching solver and stops being practical well before a continental model — see <a href="#sec-backends" class="quarto-xref"><span>Section 8.7</span></a> for the measurement.</li>
+<li><strong>Always sample the calendar.</strong> <a href="07-pypsa-replication.html" class="quarto-xref"><span>Chapter 9</span></a> solves the 41-node model on four representative days and reports what that costs.</li>
+</ul>
+<p><code>model_size()</code> before <code>solve_scen()</code> is a good habit on any model you have not solved before. It is cheap, and it tells you whether the next command takes a second or an afternoon.</p>
+</section>
+<section id="sec-solve" class="level2" data-number="8.3">
+<h2 data-number="8.3" class="anchored" data-anchor-id="sec-solve"><span class="header-section-number">8.3</span> 6.1 — Solve it</h2>
+<p><strong>6.1 — Interpolate and solve.</strong> Turn the model into a scenario, solve it, and report the objective.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Solution 6.1">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-1-contents" aria-controls="callout-1" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Solution 6.1
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-1" class="callout-1-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>scen <span class="ot">&lt;-</span> <span class="fu">interpolate_model</span>(cp, <span class="at">name =</span> <span class="st">"be_cp"</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>sol  <span class="ot">&lt;-</span> <span class="fu">solve_scen</span>(scen, <span class="at">solver =</span> solver_options<span class="sc">$</span>julia_highs)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a><span class="fu">getData</span>(sol, <span class="st">"vObjective"</span>, <span class="at">merge =</span> <span class="cn">TRUE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p><strong>8,260,626,305.45</strong>, in about four and a half minutes.</p>
+<p>A bare number until you know its units, and establishing those is the first thing to do with any model you did not build. Here it is genuinely <strong>annual system cost</strong> — annualised capital plus a full year of operating cost — because the calendar covers the whole year. On a sampled model it would not be, and that distinction is the subject of <a href="#sec-provenance" class="quarto-xref"><span>Section 8.15</span></a>.</p>
+<p><code>interpolate_model()</code> collects sets from the objects, builds the mapping layer, interpolates parameters over the milestone years and returns a solver-ready <code>scenario</code>. <code>solve_scen()</code> writes the model file, runs the solver, reads the solution back.</p>
+<p>Two habits worth forming now. <strong>Name your scenarios</strong> — the name is what <a href="#sec-compare" class="quarto-xref"><span>Section 8.12</span></a> keys on. And <strong>keep the scenario</strong>, not just the solution: it holds the parameters you will want when a result surprises you.</p>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-size" class="level2" data-number="8.4">
+<h2 data-number="8.4" class="anchored" data-anchor-id="sec-size"><span class="header-section-number">8.4</span> 6.2 — How big is it?</h2>
+<p>Before shrinking anything, measure it. <code>model_size()</code> estimates variables and constraints from the gating maps and lists the heaviest parameters.</p>
+<p><strong>6.2 — Measure the model.</strong> Report variables and constraints, and identify the parameters holding the most rows. Explain what they have in common.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Solution 6.2">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-2-contents" aria-controls="callout-2" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Solution 6.2
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-2" class="callout-2-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">model_size</span>(scen)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<pre><code>  parameters : 143 value, 260 maps, 13 sets
+  param rows : 286,655
+  estimate   : ~473,133 variables, ~508,159 constraints
+  top parameters by rows:
+    pTechVarom     113,880      pDemand         8,760
+    pTechCinp2use   61,320      pTechAf         8,760
+    pWeather        40,941      pTechCap           11</code></pre>
+<p>Every leader is indexed by <code>timeslice</code>. With 8,760 of them, anything carrying that dimension dwarfs anything that does not: <code>pTechCap</code> has <strong>11</strong> rows, <code>pTechVarom</code> has <strong>113,880</strong>.</p>
+<p><strong>Dimensionality, not object count, is what makes a model big.</strong> Forty-odd objects on one region produce a half-million-variable LP — purely because the year is resolved hourly. This is why the temporal and regional resolution decisions of <a href="02-time-resolution.html" class="quarto-xref"><span>Chapter 4</span></a> and <a href="03-regions-and-trade.html" class="quarto-xref"><span>Chapter 5</span></a> are the expensive ones.</p>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-shrink" class="level2" data-number="8.5">
+<h2 data-number="8.5" class="anchored" data-anchor-id="sec-shrink"><span class="header-section-number">8.5</span> 6.3 — Shrink it: sparse, prune, fold, trim</h2>
+<p><code>interpolate_model()</code> has three storage knobs, plus one step you apply afterwards:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 50%">
+<col style="width: 50%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>knob</th>
+<th>what it does</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>sparse</code></td>
+<td>drops rows whose value equals the parameter’s default</td>
+</tr>
+<tr class="even">
+<td><code>prune</code></td>
+<td>drops interpolated rows outside the equation-domain maps</td>
+</tr>
+<tr class="odd">
+<td><code>fold</code></td>
+<td>collapses a whole column of a trimmable dimension to an <code>NA</code> wildcard</td>
+</tr>
+<tr class="even">
+<td><code>trim_parameters_by_maps()</code></td>
+<td>drops rows that no map indexes at all</td>
+</tr>
+</tbody>
+</table>
+<p>None of them changes the solution. All change how much data you carry.</p>
+<p><strong>6.3 — Measure each step.</strong> Interpolate with every knob off, switch them on one at a time, and record parameter rows. Determine which knob pays here and which does nothing — and why that is informative rather than disappointing.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Solution 6.3">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-3-contents" aria-controls="callout-3" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Solution 6.3
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-3" class="callout-3-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>rows <span class="ot">&lt;-</span> <span class="cf">function</span>(sc) <span class="fu">sum</span>(<span class="fu">vapply</span>(sc<span class="sc">@</span>modInp<span class="sc">@</span>parameters,</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="cf">function</span>(p) <span class="cf">if</span> (<span class="fu">is.null</span>(p)) <span class="dv">0</span>L <span class="cf">else</span> <span class="fu">NROW</span>(p<span class="sc">@</span>data), <span class="fu">integer</span>(<span class="dv">1</span>)))</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>raw <span class="ot">&lt;-</span> <span class="fu">interpolate_model</span>(cp, <span class="at">name =</span> <span class="st">"raw"</span>, <span class="at">sparse =</span> <span class="cn">FALSE</span>, <span class="at">prune =</span> <span class="cn">FALSE</span>, <span class="at">fold =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>sp  <span class="ot">&lt;-</span> <span class="fu">interpolate_model</span>(cp, <span class="at">name =</span> <span class="st">"sp"</span>,  <span class="at">sparse =</span> <span class="cn">TRUE</span>,  <span class="at">prune =</span> <span class="cn">FALSE</span>, <span class="at">fold =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>pr  <span class="ot">&lt;-</span> <span class="fu">interpolate_model</span>(cp, <span class="at">name =</span> <span class="st">"pr"</span>,  <span class="at">sparse =</span> <span class="cn">TRUE</span>,  <span class="at">prune =</span> <span class="cn">TRUE</span>,  <span class="at">fold =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>fd  <span class="ot">&lt;-</span> <span class="fu">interpolate_model</span>(cp, <span class="at">name =</span> <span class="st">"fd"</span>,  <span class="at">sparse =</span> <span class="cn">TRUE</span>,  <span class="at">prune =</span> <span class="cn">TRUE</span>,  <span class="at">fold =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>tr  <span class="ot">&lt;-</span> <span class="fu">trim_parameters_by_maps</span>(pr)</span>
+<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a><span class="fu">data.frame</span>(</span>
+<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">step =</span> <span class="fu">c</span>(<span class="st">"raw"</span>, <span class="st">"+sparse"</span>, <span class="st">"+prune"</span>, <span class="st">"+fold"</span>, <span class="st">"+trim"</span>),</span>
+<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">rows =</span> <span class="fu">vapply</span>(<span class="fu">list</span>(raw, sp, pr, fd, tr), rows, <span class="fu">integer</span>(<span class="dv">1</span>)),</span>
+<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">size =</span> <span class="fu">vapply</span>(<span class="fu">list</span>(raw, sp, pr, fd, tr),</span>
+<span id="cb9-14"><a href="#cb9-14" aria-hidden="true" tabindex="-1"></a>                <span class="cf">function</span>(x) <span class="fu">format</span>(<span class="fu">object.size</span>(x), <span class="at">units =</span> <span class="st">"MB"</span>), <span class="fu">character</span>(<span class="dv">1</span>))</span>
+<span id="cb9-15"><a href="#cb9-15" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>A local run gives:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>step</th>
+<th style="text-align: right;">parameter rows</th>
+<th style="text-align: right;">size</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>raw</td>
+<td style="text-align: right;">1,942,567</td>
+<td style="text-align: right;">116.4 MB</td>
+</tr>
+<tr class="even">
+<td>+sparse</td>
+<td style="text-align: right;">1,536,711</td>
+<td style="text-align: right;">97.4 MB</td>
+</tr>
+<tr class="odd">
+<td>+prune</td>
+<td style="text-align: right;">1,536,711</td>
+<td style="text-align: right;">97.4 MB</td>
+</tr>
+<tr class="even">
+<td>+fold</td>
+<td style="text-align: right;">1,308,977</td>
+<td style="text-align: right;">84.5 MB</td>
+</tr>
+<tr class="odd">
+<td>+trim</td>
+<td style="text-align: right;">1,536,711</td>
+<td style="text-align: right;">97.4 MB</td>
+</tr>
+</tbody>
+</table>
+<p><code>sparse</code> pays: it strips 405,856 rows that merely restated a default. <code>fold</code> pays again, collapsing a further 227,734. <strong><code>prune</code> and <code>trim</code> remove nothing at all</strong> — and that is the interesting result, not a failure.</p>
+<p>Both exist to catch rows the equations never ask for. Removing nothing means the mapping layer already built these parameters over exactly their equation domains. On a model where <code>prune</code> strips a lot, it is telling you interpolation is generating year or region combinations no equation uses — usually a sign of a horizon or region set wider than the data supports.</p>
+<p>So treat these knobs as <strong>diagnostics first, savings second</strong>. A folded scenario is expanded again at solve time, trading a little CPU for memory: worth it when parameter tables stop fitting comfortably, not before.</p>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-sample" class="level2" data-number="8.6">
+<h2 data-number="8.6" class="anchored" data-anchor-id="sec-sample"><span class="header-section-number">8.6</span> A sampled calendar</h2>
+<p>The rest of the chapter varies the model — six milestone years, then a sweep of carbon prices. At four and a half minutes a solve, that is an afternoon.</p>
+<p>energyRt separates the <strong>model</strong> from the <strong>calendar it is solved on</strong>. The model carries the whole year; a scenario can be interpolated onto a <em>subset</em> of its timeslices. One such calendar ships with the package:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">data</span>(calendars)</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>cal <span class="ot">&lt;-</span> calendars<span class="sc">$</span>d365_h24_subset_1day_per_month</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a><span class="fu">nrow</span>(cal<span class="sc">@</span>timetable)     <span class="co"># 288 = 12 days x 24 hours</span></span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>cal<span class="sc">@</span>year_fraction       <span class="co"># 0.0329  -&gt;  pTimesliceWeight = 30.42</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>One day per month, all 24 hours. Pass it as an extra argument:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>scen_s <span class="ot">&lt;-</span> <span class="fu">interpolate_model</span>(cp, cal, <span class="at">name =</span> <span class="st">"be_s"</span>)</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a><span class="fu">model_size</span>(scen_s)      <span class="co"># ~15,600 variables instead of ~473,000</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>sol_s  <span class="ot">&lt;-</span> <span class="fu">solve_scen</span>(scen_s, <span class="at">solver =</span> solver_options<span class="sc">$</span>julia_highs)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="callout callout-style-simple callout-note">
+<div class="callout-body d-flex">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-body-container">
+<p><strong>What the sample costs.</strong> The 288-slice answer is <strong>8,157,519,902</strong> against the full year’s 8,260,626,305 — <strong>1.25% low</strong> — and solves in about 20 seconds instead of four and a half minutes.</p>
+<p>It is not free, and the error is not a fixed property of “sampling”. A <em>four</em>-day sample of this same model is <strong>3.10% off</strong> and picks a different solar technology entirely. Twelve days sees twelve days of weather, so it still understates anything that rides out a long lull — seasonal storage most of all. Representative-period sampling is a modelling decision, not a convenience.</p>
+</div>
+</div>
+</div>
+<p>Note also what the weighting now does: <code>pTimesliceWeight</code> is 30.42, so the 288 modelled hours stand in for 8,760. The objective is again annual, but by <em>scaling</em> rather than by counting.</p>
+</section>
+<section id="sec-backends" class="level2" data-number="8.7">
+<h2 data-number="8.7" class="anchored" data-anchor-id="sec-backends"><span class="header-section-number">8.7</span> 6.4 — Different back-ends</h2>
+<p>energyRt writes the same model for several solvers, generating the algebra from one specification per back-end. <strong>The objective must agree.</strong> A real disagreement is a bug in a template, not a matter of solver taste.</p>
+<p><strong>6.4 — Solve the same scenario on several back-ends.</strong> Compare objectives and wall-clock time. Determine what you would conclude from a disagreement in the tenth digit, and what from one in the third.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Solution 6.4">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-4-contents" aria-controls="callout-4" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Solution 6.4
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-4" class="callout-4-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(solver_options)   <span class="co"># what is available</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>backends <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"glpk"</span>, <span class="st">"julia_highs"</span>, <span class="st">"pyomo_glpk"</span>, <span class="st">"pyomo_cbc"</span>)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>bench <span class="ot">&lt;-</span> <span class="fu">lapply</span>(backends, <span class="cf">function</span>(b) {</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  t0 <span class="ot">&lt;-</span> <span class="fu">Sys.time</span>()</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  s  <span class="ot">&lt;-</span> <span class="fu">try</span>(<span class="fu">solve_scen</span>(scen_s, <span class="at">name =</span> <span class="fu">paste0</span>(<span class="st">"be_"</span>, b), <span class="at">solver =</span> solver_options[[b]]),</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>            <span class="at">silent =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>(</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">backend   =</span> b,</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">seconds   =</span> <span class="fu">round</span>(<span class="fu">as.numeric</span>(<span class="fu">difftime</span>(<span class="fu">Sys.time</span>(), t0, <span class="at">units =</span> <span class="st">"secs"</span>)), <span class="dv">1</span>),</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">objective =</span> <span class="cf">if</span> (<span class="fu">inherits</span>(s, <span class="st">"try-error"</span>)) <span class="cn">NA_real_</span></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>                <span class="cf">else</span> <span class="fu">getData</span>(s, <span class="st">"vObjective"</span>, <span class="at">merge =</span> <span class="cn">TRUE</span>)<span class="sc">$</span>value[<span class="dv">1</span>]</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>}) <span class="sc">|&gt;</span> <span class="fu">bind_rows</span>()</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>bench</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>On the sampled scenario:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>back-end</th>
+<th style="text-align: right;">seconds</th>
+<th style="text-align: right;">objective</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>glpk</td>
+<td style="text-align: right;">2.0</td>
+<td style="text-align: right;">8,157,519,901.55</td>
+</tr>
+<tr class="even">
+<td>julia_highs</td>
+<td style="text-align: right;">20.2</td>
+<td style="text-align: right;">8,157,519,901.55</td>
+</tr>
+<tr class="odd">
+<td>pyomo_glpk</td>
+<td style="text-align: right;">6.4</td>
+<td style="text-align: right;">8,157,519,901.55</td>
+</tr>
+<tr class="even">
+<td>pyomo_cbc</td>
+<td style="text-align: right;">5.2</td>
+<td style="text-align: right;">8,157,519,9<strong>00.00</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Three back-ends agree to every digit printed; CBC differs by 1.55 — a relative difference of <strong>1.9 × 10⁻¹⁰</strong>, far below the precision of any input. Ignore it.</p>
+<p>A disagreement in the third digit would be a different matter: either the templates disagree about an equation, or a solver stopped early. Always check status before believing a number — a run that hits a time limit can return a <em>feasible</em> point that looks perfectly plausible and is not optimal.</p>
+<p><strong>And note the ranking, which inverts with size.</strong> On this small scenario GLPK is the <em>fastest</em>: Julia’s start-up dominates. Run the same comparison on the <strong>full-year</strong> model and the order reverses hard:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>back-end</th>
+<th style="text-align: right;">288 slices</th>
+<th style="text-align: right;">8,760 slices</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>glpk</td>
+<td style="text-align: right;"><strong>2.0 s</strong></td>
+<td style="text-align: right;">1,384 s (23 min)</td>
+</tr>
+<tr class="even">
+<td>julia_highs</td>
+<td style="text-align: right;">20.2 s</td>
+<td style="text-align: right;"><strong>275 s</strong></td>
+</tr>
+</tbody>
+</table>
+<p>GLPK still gets there, and agrees with HiGHS to eleven significant figures (8,260,626,305.56 against 8,260,626,305.45) — but it takes five times as long. “The serious solver is faster” is not something to assume at any particular size; it is something to measure. And the corollary matters more: a back-end that is fine for a teaching model can be hopeless two orders of magnitude up.</p>
+<p>You need each back-end installed; one you do not have raises an error, which is why the loop wraps <code>try()</code>. See the <strong>Installation</strong> chapter.</p>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-horizon" class="level2" data-number="8.8">
+<h2 data-number="8.8" class="anchored" data-anchor-id="sec-horizon"><span class="header-section-number">8.8</span> 6.5 — A planning horizon to 2050</h2>
+<p>The model has one milestone year. Planning studies want a path: when capacity is built, when it retires, what the system looks like in between.</p>
+<p><strong>6.5 — Extend the horizon.</strong> Solve over 2025–2050 in five-year steps on the sampled calendar. Report the model size, plot the capacity path — and then look hard at what it built.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Solution 6.5">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-5-contents" aria-controls="callout-5" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Solution 6.5
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-5" class="callout-5-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>hor <span class="ot">&lt;-</span> <span class="fu">newHorizon</span>(<span class="dv">2025</span><span class="sc">:</span><span class="dv">2050</span>, <span class="at">intervals =</span> <span class="fu">c</span>(<span class="dv">1</span>, <span class="dv">5</span>, <span class="dv">5</span>, <span class="dv">5</span>, <span class="dv">5</span>, <span class="dv">5</span>))</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>hor<span class="sc">@</span>intervals</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Note where the milestones land: <strong>2025, 2028, 2033, 2038, 2043, 2048</strong>. energyRt places each milestone at its interval’s <em>mid-point</em>, so “five-year steps to 2050” does not put a milestone on 2050. Check <code>hor@intervals</code> rather than assuming.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>scen_2050 <span class="ot">&lt;-</span> <span class="fu">interpolate_model</span>(cp, cal, hor, <span class="at">name =</span> <span class="st">"be_2050"</span>)</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>sol_2050  <span class="ot">&lt;-</span> <span class="fu">solve_scen</span>(scen_2050, <span class="at">solver =</span> solver_options<span class="sc">$</span>julia_highs)</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a><span class="fu">model_size</span>(scen_2050)      <span class="co"># ~93,900 variables</span></span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a><span class="fu">getData</span>(sol_2050, <span class="st">"vTechCap"</span>, <span class="at">merge =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(year, tech) <span class="sc">|&gt;</span> <span class="fu">summarise</span>(<span class="at">cap =</span> <span class="fu">sum</span>(value), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(year, cap, <span class="at">fill =</span> tech)) <span class="sc">+</span> <span class="fu">geom_area</span>() <span class="sc">+</span></span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"capacity"</span>) <span class="sc">+</span> <span class="fu">theme_bw</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Objective <strong>15,187,226,948</strong>, and by 2048 the system is solar-hsat 15,191, biomass 10,999, onwind 7,067, offwind-dc 6,018. Total CO₂: <strong>zero</strong>.</p>
+<p>Now stop and check that, because it is wrong.</p>
+</div>
+</div>
+</div>
+<p><strong>6.5b — Something is off. Find it.</strong> The base model has <strong>113 MW</strong> of biomass and PyPSA marks it non-extendable. The 2048 solution has <strong>10,999 MW</strong>. Work out why, and fix it.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Solution 6.5b">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-6-contents" aria-controls="callout-6" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Solution 6.5b
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-6" class="callout-6-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>bio <span class="ot">&lt;-</span> <span class="fu">getObject</span>(cp, <span class="at">name =</span> <span class="st">"E_BIOMASS"</span>)[[<span class="dv">1</span>]]</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>bio<span class="sc">@</span>capacity     <span class="co"># stock 113, cap.up NA, year 2050</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>bio<span class="sc">@</span>vintage      <span class="co"># end = 2049</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Two things conspire, and both come from the same root: <strong>the converted model describes a single year, 2050.</strong></p>
+<ul>
+<li>The converter closes investment on non-extendable plant by setting <code>vintage$end = 2049</code>, one year before the model’s own milestone. Every milestone on this horizon — 2025 to 2048 — falls <em>before</em> 2049, so the investment window is <strong>open</strong> in all of them.</li>
+<li>The capacity row is keyed to <code>year = 2050</code>. Any bound you add there simply does not apply to the earlier milestones either.</li>
+</ul>
+<p>So extending the horizon silently unlocked plant that PyPSA holds fixed. Fixing it needs the bound <em>and</em> a wildcard year:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>cp_fix <span class="ot">&lt;-</span> cp</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> cp_fix<span class="sc">@</span>data[[<span class="dv">1</span>]]</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_along</span>(r<span class="sc">@</span>data)) {</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  o <span class="ot">&lt;-</span> r<span class="sc">@</span>data[[i]]</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (<span class="sc">!</span><span class="fu">is</span>(o, <span class="st">"technology"</span>) <span class="sc">||</span> <span class="sc">!</span><span class="fu">NROW</span>(o<span class="sc">@</span>vintage) <span class="sc">||</span> <span class="fu">is.na</span>(o<span class="sc">@</span>vintage<span class="sc">$</span>end[<span class="dv">1</span>])) <span class="cf">next</span></span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>  st <span class="ot">&lt;-</span> o<span class="sc">@</span>capacity<span class="sc">$</span>stock[<span class="dv">1</span>]; <span class="cf">if</span> (<span class="fu">is.na</span>(st)) <span class="cf">next</span></span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>  o<span class="sc">@</span>capacity<span class="sc">$</span>cap.up <span class="ot">&lt;-</span> st</span>
+<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>  o<span class="sc">@</span>capacity<span class="sc">$</span>year   <span class="ot">&lt;-</span> <span class="cn">NA_integer_</span>     <span class="co"># NA = every year, not just 2050</span></span>
+<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>  r<span class="sc">@</span>data[[i]] <span class="ot">&lt;-</span> o</span>
+<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>cp_fix<span class="sc">@</span>data[[<span class="dv">1</span>]] <span class="ot">&lt;-</span> r</span>
+<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>sol_fix <span class="ot">&lt;-</span> <span class="fu">solve_scen</span>(<span class="fu">interpolate_model</span>(cp_fix, cal, hor, <span class="at">name =</span> <span class="st">"be_fix"</span>),</span>
+<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>                      <span class="at">solver =</span> solver_options<span class="sc">$</span>julia_highs)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th></th>
+<th style="text-align: right;">as shipped</th>
+<th style="text-align: right;">fixed</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>objective</td>
+<td style="text-align: right;">15,187,226,948</td>
+<td style="text-align: right;"><strong>21,501,935,951</strong></td>
+</tr>
+<tr class="even">
+<td>CO₂</td>
+<td style="text-align: right;"><strong>0</strong></td>
+<td style="text-align: right;"><strong>1,155,508 t</strong></td>
+</tr>
+<tr class="odd">
+<td>biomass in 2048</td>
+<td style="text-align: right;">10,999 MW</td>
+<td style="text-align: right;">113 MW</td>
+</tr>
+<tr class="even">
+<td>fuels burned</td>
+<td style="text-align: right;">biomass only</td>
+<td style="text-align: right;">gas 4.57 M, waste, oil, biomass</td>
+</tr>
+</tbody>
+</table>
+<p>The naive answer was <strong>42% too cheap</strong> and reported zero emissions for a system that actually burns 4.6 million units of gas.</p>
+<p>Two lessons, and the second is the general one:</p>
+<ul>
+<li><strong>Setting <code>cap.up</code> alone does nothing</strong> if the row is keyed to a year your horizon never visits. Wildcard the year.</li>
+<li><strong>A converted model carries the assumptions of the run it came from.</strong> This one was built for a single 2050 snapshot; it does not know what “2030” means. Any time you extend a model beyond the horizon it was made for, audit the bounds before believing the answer — and a capacity 97× its stated stock is exactly the kind of thing to notice.</li>
+</ul>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-retire" class="level2" data-number="8.9">
+<h2 data-number="8.9" class="anchored" data-anchor-id="sec-retire"><span class="header-section-number">8.9</span> 6.6 — Endogenous retirement</h2>
+<p>By default a plant lives out its technical life. With <code>optimizeRetirement</code> the model may retire it early, when paying fixed costs is worse than losing it.</p>
+<p><strong>6.6 — Let the model retire plant.</strong> Solve the 2050 horizon with <code>optimizeRetirement = TRUE</code>. Before running it, predict the direction the objective must move — then check.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Solution 6.6">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-7-contents" aria-controls="callout-7" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Solution 6.6
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-7" class="callout-7-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>cp_ret <span class="ot">&lt;-</span> cp</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>cp_ret<span class="sc">@</span>config<span class="sc">@</span>optimizeRetirement <span class="ot">&lt;-</span> <span class="cn">TRUE</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>sol_ret <span class="ot">&lt;-</span> <span class="fu">solve_scen</span>(<span class="fu">interpolate_model</span>(cp_ret, cal, hor, <span class="at">name =</span> <span class="st">"be_ret"</span>),</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a>                      <span class="at">solver =</span> solver_options<span class="sc">$</span>julia_highs)</span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="fu">getData</span>(sol_ret, <span class="st">"vObjective"</span>, <span class="at">merge =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a><span class="fu">getData</span>(sol_ret, <span class="st">"vTechRetiredStock"</span>, <span class="at">merge =</span> <span class="cn">TRUE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The objective is <strong>15,187,226,948 — identical — and nothing retires at all.</strong></p>
+<p>You should have predicted the direction, if not the exact tie: retirement is an <strong>option</strong>, and adding an option to an optimisation can never make the optimum worse. It can only improve or stay equal. (If yours got worse, something else changed too.)</p>
+<p>Here it stayed exactly equal, which means the option was <strong>worthless on this model</strong>. That is a result, and the right thing to do is report it — not tune parameters until something retires. It makes sense once you look at 6.5: the fossil fleet is already sitting idle, and an idle plant with no fixed cost worth avoiding has no reason to be scrapped.</p>
+<p>One asymmetry to know: retirement is implemented for <strong>technologies</strong>. Storage carries the retirement data and mappings, but the equations are not in the back-ends, so a storage will not retire early whatever you set.</p>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-tax" class="level2" data-number="8.10">
+<h2 data-number="8.10" class="anchored" data-anchor-id="sec-tax"><span class="header-section-number">8.10</span> 6.7 — A carbon tax</h2>
+<p>A tax fixes the <strong>price</strong> of carbon and lets the quantity float. Back to the single-period scenario, where the fleet still burns fuel.</p>
+<p><strong>6.7 — Price the carbon.</strong> Sweep a range of carbon prices and plot emissions against price. Determine whether the response is smooth.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Solution 6.7">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-8-contents" aria-controls="callout-8" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Solution 6.7
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-8" class="callout-8-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>tax_run <span class="ot">&lt;-</span> <span class="cf">function</span>(level) {</span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>  TAX <span class="ot">&lt;-</span> <span class="fu">newTax</span>(<span class="at">name =</span> <span class="st">"CT_CO2"</span>, <span class="at">comm =</span> <span class="st">"CO2"</span>,</span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>                <span class="at">tax =</span> <span class="fu">data.frame</span>(<span class="at">year =</span> <span class="dv">2050</span>, <span class="at">bal =</span> level))</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>  s <span class="ot">&lt;-</span> <span class="fu">interpolate_model</span>(cp, cal, TAX, <span class="at">name =</span> <span class="fu">paste0</span>(<span class="st">"tax"</span>, level))</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>  o <span class="ot">&lt;-</span> <span class="fu">solve_scen</span>(s, <span class="at">solver =</span> solver_options<span class="sc">$</span>julia_highs)</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>(<span class="at">tax =</span> level,</span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>             <span class="at">objective =</span> <span class="fu">getData</span>(o, <span class="st">"vObjective"</span>, <span class="at">merge =</span> <span class="cn">TRUE</span>)<span class="sc">$</span>value[<span class="dv">1</span>],</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a>             <span class="at">co2 =</span> <span class="fu">sum</span>(<span class="fu">getData</span>(o, <span class="st">"vEmsFuelTot"</span>, <span class="at">merge =</span> <span class="cn">TRUE</span>)<span class="sc">$</span>value))</span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb18-10"><a href="#cb18-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-11"><a href="#cb18-11" aria-hidden="true" tabindex="-1"></a>sweep_tax <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(<span class="fu">lapply</span>(<span class="fu">c</span>(<span class="dv">0</span>, <span class="dv">10</span>, <span class="dv">30</span>, <span class="dv">60</span>, <span class="dv">120</span>), tax_run))</span>
+<span id="cb18-12"><a href="#cb18-12" aria-hidden="true" tabindex="-1"></a>sweep_tax</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: right;">tax</th>
+<th style="text-align: right;">objective</th>
+<th style="text-align: right;">CO₂</th>
+<th style="text-align: right;">abated</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">8,157,519,902</td>
+<td style="text-align: right;">380,814</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">8,270,786,273</td>
+<td style="text-align: right;">357,103</td>
+<td style="text-align: right;">6%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">30</td>
+<td style="text-align: right;">8,443,801,834</td>
+<td style="text-align: right;">254,244</td>
+<td style="text-align: right;">33%</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">60</td>
+<td style="text-align: right;">8,652,652,655</td>
+<td style="text-align: right;">216,577</td>
+<td style="text-align: right;">43%</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">120</td>
+<td style="text-align: right;">8,967,338,499</td>
+<td style="text-align: right;">113,828</td>
+<td style="text-align: right;"><strong>70%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>The response is <strong>not smooth</strong>. Between 10 and 30 the price triples and buys 27 percentage points; between 30 and 60 it doubles and buys only 10.</p>
+<p>That is normal for a linear program and worth internalising, because it defeats the intuition people bring from smooth economics. An LP’s response to a price is piecewise linear with kinks — each kink a technology becoming worth switching — so <strong>you cannot interpolate between two runs</strong> and claim the answer in between. If you need the shape, sweep it.</p>
+<p>Check units before believing any of this. Emission factors are tonnes per unit of fuel commodity; the tax is money per tonne of <code>CO2</code>; both must be in the same money unit as the objective. Off by a factor of 1000, the model either ignores the tax or shuts the system down — and both look like plausible model behaviour, which is what makes unit errors here so dangerous.</p>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-cap" class="level2" data-number="8.11">
+<h2 data-number="8.11" class="anchored" data-anchor-id="sec-cap"><span class="header-section-number">8.11</span> 6.8 — A carbon cap</h2>
+<p>A cap fixes the <strong>quantity</strong> and lets the price float — the mirror image.</p>
+<p><strong>6.8 — Cap the carbon.</strong> Constrain CO₂ to fractions of the unconstrained level and compare the cost of each. Determine the shape of the resulting curve.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Solution 6.8">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-9-contents" aria-controls="callout-9" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Solution 6.8
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-9" class="callout-9-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>base_co2 <span class="ot">&lt;-</span> <span class="fu">sum</span>(<span class="fu">getData</span>(sol_s, <span class="st">"vEmsFuelTot"</span>, <span class="at">merge =</span> <span class="cn">TRUE</span>)<span class="sc">$</span>value)   <span class="co"># 380,814</span></span>
+<span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-3"><a href="#cb19-3" aria-hidden="true" tabindex="-1"></a>cap_run <span class="ot">&lt;-</span> <span class="cf">function</span>(frac) {</span>
+<span id="cb19-4"><a href="#cb19-4" aria-hidden="true" tabindex="-1"></a>  CAP <span class="ot">&lt;-</span> <span class="fu">newConstraint</span>(</span>
+<span id="cb19-5"><a href="#cb19-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">name =</span> <span class="st">"CO2_CAP"</span>, <span class="at">eq =</span> <span class="st">"&lt;="</span>,</span>
+<span id="cb19-6"><a href="#cb19-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">for.each =</span> <span class="fu">data.frame</span>(<span class="at">year =</span> <span class="dv">2050</span>, <span class="at">comm =</span> <span class="st">"CO2"</span>),</span>
+<span id="cb19-7"><a href="#cb19-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">term1    =</span> <span class="fu">list</span>(<span class="at">variable =</span> <span class="st">"vEmsFuelTot"</span>),</span>
+<span id="cb19-8"><a href="#cb19-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">rhs      =</span> <span class="fu">data.frame</span>(<span class="at">year =</span> <span class="dv">2050</span>, <span class="at">rhs =</span> frac <span class="sc">*</span> base_co2),</span>
+<span id="cb19-9"><a href="#cb19-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">defVal   =</span> <span class="cn">Inf</span>)</span>
+<span id="cb19-10"><a href="#cb19-10" aria-hidden="true" tabindex="-1"></a>  o <span class="ot">&lt;-</span> <span class="fu">solve_scen</span>(<span class="fu">interpolate_model</span>(cp, cal, CAP, <span class="at">name =</span> <span class="fu">paste0</span>(<span class="st">"cap"</span>, frac <span class="sc">*</span> <span class="dv">100</span>)),</span>
+<span id="cb19-11"><a href="#cb19-11" aria-hidden="true" tabindex="-1"></a>                  <span class="at">solver =</span> solver_options<span class="sc">$</span>julia_highs)</span>
+<span id="cb19-12"><a href="#cb19-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>(<span class="at">cap =</span> frac,</span>
+<span id="cb19-13"><a href="#cb19-13" aria-hidden="true" tabindex="-1"></a>             <span class="at">objective =</span> <span class="fu">getData</span>(o, <span class="st">"vObjective"</span>, <span class="at">merge =</span> <span class="cn">TRUE</span>)<span class="sc">$</span>value[<span class="dv">1</span>],</span>
+<span id="cb19-14"><a href="#cb19-14" aria-hidden="true" tabindex="-1"></a>             <span class="at">co2 =</span> <span class="fu">sum</span>(<span class="fu">getData</span>(o, <span class="st">"vEmsFuelTot"</span>, <span class="at">merge =</span> <span class="cn">TRUE</span>)<span class="sc">$</span>value))</span>
+<span id="cb19-15"><a href="#cb19-15" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb19-16"><a href="#cb19-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb19-17"><a href="#cb19-17" aria-hidden="true" tabindex="-1"></a>sweep_cap <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(<span class="fu">lapply</span>(<span class="fu">c</span>(<span class="dv">1</span>, <span class="fl">0.75</span>, <span class="fl">0.5</span>, <span class="fl">0.25</span>), cap_run))</span>
+<span id="cb19-18"><a href="#cb19-18" aria-hidden="true" tabindex="-1"></a>sweep_cap <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">cost_per_t =</span> (objective <span class="sc">-</span> objective[<span class="dv">1</span>]) <span class="sc">/</span> (co2[<span class="dv">1</span>] <span class="sc">-</span> co2))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th style="text-align: right;">cap</th>
+<th style="text-align: right;">CO₂</th>
+<th style="text-align: right;">objective</th>
+<th style="text-align: right;">average cost per tonne</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">100%</td>
+<td style="text-align: right;">380,814</td>
+<td style="text-align: right;">8,157,519,902</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">75%</td>
+<td style="text-align: right;">285,611</td>
+<td style="text-align: right;">8,187,324,954</td>
+<td style="text-align: right;">313</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">50%</td>
+<td style="text-align: right;">190,407</td>
+<td style="text-align: right;">8,316,370,475</td>
+<td style="text-align: right;">834</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">25%</td>
+<td style="text-align: right;">95,204</td>
+<td style="text-align: right;">8,635,818,535</td>
+<td style="text-align: right;">1,675</td>
+</tr>
+</tbody>
+</table>
+<p>Every cap <strong>binds exactly</strong> — emissions land on the ceiling to the tonne, which is the first thing to check: a cap that does not bind is not a policy, it is a no-op.</p>
+<p>The cost per tonne rises 313 → 834 → 1,675. That is a <strong>marginal abatement cost curve</strong>, and its convexity is the whole story of climate policy cost: cheap options first, expensive ones last. It is steep here because the base case has already taken the cheap options — this is a 2050 cost world with a largely decarbonised fleet, so what remains is genuinely expensive to remove.</p>
+<p>Set the ceiling <em>from the unconstrained result</em>, as here, which is why 6.1 runs first. A cap below what the system can physically reach makes the model infeasible, and <strong>infeasibility is information, not an error to code around</strong>: it says nothing in this system can deliver that ceiling. The useful response is to ask what would have to be added, not to relax the cap until the solver stops complaining.</p>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-compare" class="level2" data-number="8.12">
+<h2 data-number="8.12" class="anchored" data-anchor-id="sec-compare"><span class="header-section-number">8.12</span> 6.9 — Compare the scenarios</h2>
+<p><strong>6.9 — Put tax and cap side by side.</strong> Compare a tax and a cap that deliver similar abatement. Determine which is cheaper, and explain the difference.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Solution 6.9">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-10-contents" aria-controls="callout-10" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Solution 6.9
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-10" class="callout-10-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Pick the pair that lands closest together — tax 60 (CO₂ 216,577) and cap 50% (CO₂ 190,407):</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>policy</th>
+<th style="text-align: right;">CO₂</th>
+<th style="text-align: right;">objective</th>
+<th style="text-align: right;">vs base</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>base</td>
+<td style="text-align: right;">380,814</td>
+<td style="text-align: right;">8,157,519,902</td>
+<td style="text-align: right;">—</td>
+</tr>
+<tr class="even">
+<td>tax 60</td>
+<td style="text-align: right;">216,577</td>
+<td style="text-align: right;">8,652,652,655</td>
+<td style="text-align: right;">+495,132,753</td>
+</tr>
+<tr class="odd">
+<td>cap 50%</td>
+<td style="text-align: right;">190,407</td>
+<td style="text-align: right;">8,316,370,475</td>
+<td style="text-align: right;">+158,850,573</td>
+</tr>
+</tbody>
+</table>
+<p>The tax costs <strong>three times more</strong> while abating <em>less</em>. That looks like a paradox and is not one — it is the single most misread number in this kind of comparison.</p>
+<p>The cap’s cost increase is pure <strong>resource cost</strong>: the extra expense of running a cleaner system. The tax’s increase is resource cost <strong>plus a transfer</strong> — it charges the carbon price on every one of the ~216,577 tonnes still emitted, and those payments go to a treasury, not up a smokestack. At 60 per tonne that transfer alone is about 13 million.</p>
+<p>So:</p>
+<ul>
+<li><strong>Never compare a tax and a cap on objective value alone.</strong> You are comparing a resource cost with a resource cost plus a transfer.</li>
+<li>To compare them properly, strip the tax revenue out, or compare the cap’s <strong>shadow price</strong> with the tax rate. Set the tax equal to the cap’s shadow price and the two coincide — they are duals.</li>
+<li>Which instrument you prefer follows from what you want certainty about: emissions (cap) or cost (tax).</li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>TAX60 <span class="ot">&lt;-</span> <span class="fu">newTax</span>(<span class="at">name =</span> <span class="st">"CT_CO2"</span>, <span class="at">comm =</span> <span class="st">"CO2"</span>,</span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>                <span class="at">tax =</span> <span class="fu">data.frame</span>(<span class="at">year =</span> <span class="dv">2050</span>, <span class="at">bal =</span> <span class="dv">60</span>))</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>sol_tax <span class="ot">&lt;-</span> <span class="fu">solve_scen</span>(<span class="fu">interpolate_model</span>(cp, cal, TAX60, <span class="at">name =</span> <span class="st">"cmp_tax"</span>),</span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>                      <span class="at">solver =</span> solver_options<span class="sc">$</span>julia_highs)</span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>CAP50 <span class="ot">&lt;-</span> <span class="fu">newConstraint</span>(</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">name =</span> <span class="st">"CO2_CAP"</span>, <span class="at">eq =</span> <span class="st">"&lt;="</span>,</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">for.each =</span> <span class="fu">data.frame</span>(<span class="at">year =</span> <span class="dv">2050</span>, <span class="at">comm =</span> <span class="st">"CO2"</span>),</span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">term1    =</span> <span class="fu">list</span>(<span class="at">variable =</span> <span class="st">"vEmsFuelTot"</span>),</span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">rhs      =</span> <span class="fu">data.frame</span>(<span class="at">year =</span> <span class="dv">2050</span>, <span class="at">rhs =</span> <span class="fl">0.50</span> <span class="sc">*</span> base_co2),</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">defVal   =</span> <span class="cn">Inf</span>)</span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>sol_cap <span class="ot">&lt;-</span> <span class="fu">solve_scen</span>(<span class="fu">interpolate_model</span>(cp, cal, CAP50, <span class="at">name =</span> <span class="st">"cmp_cap"</span>),</span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>                      <span class="at">solver =</span> solver_options<span class="sc">$</span>julia_highs)</span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a>scns <span class="ot">&lt;-</span> <span class="fu">list</span>(<span class="at">base =</span> sol_s, <span class="at">tax =</span> sol_tax, <span class="at">cap =</span> sol_cap)</span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a><span class="fu">lapply</span>(<span class="fu">names</span>(scns), <span class="cf">function</span>(nm) {</span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">getData</span>(scns[[nm]], <span class="st">"vTechOut"</span>, <span class="at">merge =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(tech) <span class="sc">|&gt;</span> <span class="fu">summarise</span>(<span class="at">out =</span> <span class="fu">sum</span>(value), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mutate</span>(<span class="at">scenario =</span> nm)</span>
+<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a>}) <span class="sc">|&gt;</span> <span class="fu">bind_rows</span>() <span class="sc">|&gt;</span></span>
+<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(scenario, out, <span class="at">fill =</span> tech)) <span class="sc">+</span> <span class="fu">geom_col</span>() <span class="sc">+</span> <span class="fu">theme_bw</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Plot the generation mix as well as the totals. An aggregate cost hides which plant actually moved, and “which plant moved” is usually the finding worth reporting.</p>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-growth" class="level2" data-number="8.13">
+<h2 data-number="8.13" class="anchored" data-anchor-id="sec-growth"><span class="header-section-number">8.13</span> 6.10 — Demand doubles by 2050</h2>
+<p>Everything so far dispatched a fleet that already existed. This is the first question that makes the model <strong>build</strong>: what happens to Belgium if electricity demand doubles?</p>
+<p><strong>Back to the full year for this one.</strong> <a href="#sec-sample" class="quarto-xref"><span>Section 8.6</span></a> traded 1.25% of accuracy for speed, which was a good bargain while varying horizons and carbon prices. It is a bad bargain here: this section is checked against PyPSA to the cent, and a sampled calendar would put a modelling approximation between the two models. With the full 8,760 hours and no transmission, nothing is left to excuse a difference — which is what makes the comparison in 6.10b worth anything.</p>
+<p>Its starting point:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 42%">
+<col style="width: 57%">
+</colgroup>
+<tbody>
+<tr class="odd">
+<td>annual demand</td>
+<td style="text-align: right;">86,292,102 MWh</td>
+</tr>
+<tr class="even">
+<td>peak demand</td>
+<td style="text-align: right;">13,645 MW</td>
+</tr>
+<tr class="odd">
+<td>firm plant</td>
+<td style="text-align: right;">11,267 MW (CCGT 6,634 + nuclear 4,096 + waste 294 + oil 130 + biomass 113)</td>
+</tr>
+</tbody>
+</table>
+<p>Peak already exceeds firm capacity, covered by wind, solar and storage. Doubling takes peak to ~27.3 GW, so expansion is not optional.</p>
+<p>What can grow, and by how much, is what shapes the answer:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>carrier</th>
+<th style="text-align: right;">now</th>
+<th style="text-align: right;">ceiling</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>CCGT, nuclear</td>
+<td style="text-align: right;">6,634 / 4,096</td>
+<td style="text-align: right;"><strong>unbounded</strong></td>
+</tr>
+<tr class="even">
+<td>solar</td>
+<td style="text-align: right;">938</td>
+<td style="text-align: right;">106,452</td>
+</tr>
+<tr class="odd">
+<td>solar-hsat</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">92,467</td>
+</tr>
+<tr class="even">
+<td>onwind</td>
+<td style="text-align: right;">1,724</td>
+<td style="text-align: right;">15,235</td>
+</tr>
+<tr class="odd">
+<td>offwind-ac</td>
+<td style="text-align: right;">2,752</td>
+<td style="text-align: right;">2,752 (<strong>pinned</strong>)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>6.10 — Double the demand.</strong> Solve the full-year copperplate as shipped, then again with demand doubled, and report what gets built. Then compare against the same experiment run in PyPSA. Predict, before you look, whether the extra demand is met by firm capacity or by renewables.</p>
+<p>Each of these solves takes about four and a half minutes.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Solution 6.10">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-11-contents" aria-controls="callout-11" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Solution 6.10
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-11" class="callout-11-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>Doubling demand means editing the <code>demand</code> slot. There is no override shortcut here — the objects you passed through <code>...</code> in <a href="#sec-tax" class="quarto-xref"><span>Section 8.10</span></a> and <a href="#sec-cap" class="quarto-xref"><span>Section 8.11</span></a> were <em>new</em> objects, and passing a second <code>DEM_ELC</code> instead raises <code>Duplicated objects in "class - name"</code>. So reach into the repository and replace it:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>cp2 <span class="ot">&lt;-</span> cp</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>i <span class="ot">&lt;-</span> <span class="fu">which</span>(<span class="fu">vapply</span>(cp2<span class="sc">@</span>data[[<span class="dv">1</span>]]<span class="sc">@</span>data, <span class="cf">function</span>(x) <span class="fu">is</span>(x, <span class="st">"demand"</span>), <span class="fu">logical</span>(<span class="dv">1</span>)))</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>d <span class="ot">&lt;-</span> cp2<span class="sc">@</span>data[[<span class="dv">1</span>]]<span class="sc">@</span>data[[i]]</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>d<span class="sc">@</span>demand<span class="sc">$</span>demand <span class="ot">&lt;-</span> d<span class="sc">@</span>demand<span class="sc">$</span>demand <span class="sc">*</span> <span class="dv">2</span></span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>cp2<span class="sc">@</span>data[[<span class="dv">1</span>]]<span class="sc">@</span>data[[i]] <span class="ot">&lt;-</span> d</span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>base <span class="ot">&lt;-</span> <span class="fu">solve_scen</span>(<span class="fu">interpolate_model</span>(cp,  <span class="at">name =</span> <span class="st">"cp_base"</span>),</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>                   <span class="at">solver =</span> solver_options<span class="sc">$</span>julia_highs)</span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>x2   <span class="ot">&lt;-</span> <span class="fu">solve_scen</span>(<span class="fu">interpolate_model</span>(cp2, <span class="at">name =</span> <span class="st">"cp_2x"</span>),</span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>                   <span class="at">solver =</span> solver_options<span class="sc">$</span>julia_highs)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="callout callout-style-simple callout-warning">
+<div class="callout-body d-flex">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-body-container">
+<p>Note the missing <code>cal</code>: these interpolate on the model’s <strong>own</strong> 8,760-hour calendar, not the sample of <a href="#sec-sample" class="quarto-xref"><span>Section 8.6</span></a>. That is ~473,000 variables and about <strong>4½ minutes</strong> per solve. Start it before a coffee, not before a demo.</p>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>capof <span class="ot">&lt;-</span> <span class="cf">function</span>(s) {</span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">getData</span>(s, <span class="st">"vTechCap"</span>, <span class="at">merge =</span> <span class="cn">TRUE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>    <span class="fu">group_by</span>(tech) <span class="sc">|&gt;</span> <span class="fu">summarise</span>(<span class="at">cap =</span> <span class="fu">sum</span>(value), <span class="at">.groups =</span> <span class="st">"drop"</span>)</span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a><span class="fu">full_join</span>(<span class="fu">capof</span>(base), <span class="fu">capof</span>(x2), <span class="at">by =</span> <span class="st">"tech"</span>, <span class="at">suffix =</span> <span class="fu">c</span>(<span class="st">".base"</span>, <span class="st">".x2"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">built =</span> cap.x2 <span class="sc">-</span> cap.base) <span class="sc">|&gt;</span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(built))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The result:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>technology</th>
+<th style="text-align: right;">base</th>
+<th style="text-align: right;">2× demand</th>
+<th style="text-align: right;">built</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>CCGT</td>
+<td style="text-align: right;">6,634.2</td>
+<td style="text-align: right;">16,885.1</td>
+<td style="text-align: right;"><strong>+10,250.9</strong></td>
+</tr>
+<tr class="even">
+<td>solar</td>
+<td style="text-align: right;">10,664.4</td>
+<td style="text-align: right;">19,946.2</td>
+<td style="text-align: right;">+9,281.7</td>
+</tr>
+<tr class="odd">
+<td>solar-hsat</td>
+<td style="text-align: right;">1,427.4</td>
+<td style="text-align: right;">10,658.8</td>
+<td style="text-align: right;">+9,231.4</td>
+</tr>
+<tr class="even">
+<td>onwind</td>
+<td style="text-align: right;">1,724.0</td>
+<td style="text-align: right;">4,122.8</td>
+<td style="text-align: right;">+2,398.8</td>
+</tr>
+<tr class="odd">
+<td>nuclear, offwind, oil, waste, biomass</td>
+<td style="text-align: right;"></td>
+<td style="text-align: right;">unchanged</td>
+<td style="text-align: right;">0</td>
+</tr>
+</tbody>
+</table>
+<p>Objective 8,260,626,305 → 13,387,554,321, a <strong>62% cost increase for 100% more demand</strong> — the system gets cheaper per MWh, because the existing fleet and the fixed costs are spread over twice the output.</p>
+<p>Neither prediction is quite right: the extra demand is met by <strong>both</strong>. Gas takes the largest single share because doubling the <em>peak</em> needs firm capacity that wind and solar cannot guarantee, but the three renewable carriers together add 20.9 GW against gas’s 10.3 GW. Storage grows to match: the battery roughly triples (578 → 1,806 MW) and the hydrogen store more than doubles (292,732 → 694,043 MWh). Note that solar-hsat is now worth building, having been nearly absent in the base case — at higher renewable shares its flatter output profile earns its extra capital cost.</p>
+</div>
+</div>
+</div>
+<p><strong>6.10b — Compare against PyPSA.</strong> The same experiment was run in PyPSA and shipped with the course, so you do not need a Python installation. Compare capacity, and account for any technology that does <em>not</em> match.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Solution 6.10b">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-12-contents" aria-controls="callout-12" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Solution 6.10b
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-12" class="callout-12-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>py <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"data/be_copperplate_pypsa.rds"</span>)</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>py<span class="sc">$</span>note</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>py<span class="sc">$</span>x2<span class="sc">$</span>capacity</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Every generator matches, to within 0.05 MW:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th></th>
+<th style="text-align: right;">energyRt built</th>
+<th style="text-align: right;">PyPSA built</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>CCGT</td>
+<td style="text-align: right;">+10,250.883</td>
+<td style="text-align: right;">+10,250.9</td>
+</tr>
+<tr class="even">
+<td>solar</td>
+<td style="text-align: right;">+9,281.715</td>
+<td style="text-align: right;">+9,281.7</td>
+</tr>
+<tr class="odd">
+<td>solar-hsat</td>
+<td style="text-align: right;">+9,231.439</td>
+<td style="text-align: right;">+9,231.4</td>
+</tr>
+<tr class="even">
+<td>onwind</td>
+<td style="text-align: right;">+2,398.751</td>
+<td style="text-align: right;">+2,398.8</td>
+</tr>
+<tr class="odd">
+<td><strong>total</strong></td>
+<td style="text-align: right;"><strong>31,162.8</strong></td>
+<td style="text-align: right;"><strong>31,162.8</strong></td>
+</tr>
+</tbody>
+</table>
+<p>and the objectives agree to the cent — 8,260,626,305.45 on both in the base case, 13,387,554,321.05 versus .06 with demand doubled.</p>
+<p><strong>Two models, two languages, two formulations, the same answer.</strong> That is the whole point of the comparison: it is a validation that the translation preserves the mathematics, not a competition between the tools.</p>
+<p>Two things do <em>not</em> line up, and both are instructive rather than wrong:</p>
+<ul>
+<li><strong>Compare <code>objective_total</code>, not <code>objective</code>.</strong> PyPSA leaves the capital cost of non-extendable plant out of <code>n.objective</code> and reports it separately as <code>objective_constant</code> (5,723,317,658 here). energyRt puts everything in one number. Add them before comparing, or you will be comparing 2.5 bn with 8.3 bn and concluding something dramatic and false.</li>
+<li><strong>The hydrogen converters differ.</strong> PyPSA rates a <code>Link</code> on its <strong>input</strong> bus, energyRt rates a technology on its <strong>activity</strong>. The electrolyser confirms the rule exactly: PyPSA 162.058 MW × 0.6994 efficiency = 113.3434, which is energyRt’s <code>CHR_H2</code> to four decimals. The fuel cell does <em>not</em> reconcile (5,593 versus 5,501) — because its <code>capital_cost</code> and <code>marginal_cost</code> are both zero in PyPSA, so its size is a free variable and any value that carries the flow is optimal. A degenerate alternate optimum, not a discrepancy.</li>
+</ul>
+<p>That second point is the more useful habit: before treating a mismatch as a bug, check whether the quantity is actually pinned by the optimisation at all.</p>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-duration" class="level2" data-number="8.14">
+<h2 data-number="8.14" class="anchored" data-anchor-id="sec-duration"><span class="header-section-number">8.14</span> 6.11 — How long is your storage?</h2>
+<p>A storage’s <em>capacity</em> tells you how much energy it holds. It does not tell you <strong>how long the energy stays there</strong> — and that is usually the more interesting number, because it is what separates a battery from a seasonal store.</p>
+<p><code>storage_duration()</code> answers it. It takes a solved scenario and decomposes each storage level into bands by how long the energy actually sits:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>sd <span class="ot">&lt;-</span> <span class="fu">storage_duration</span>(sol)     <span class="co"># `sol` from 6.1 -- needs the FULL-YEAR solution</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(sd)</span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a><span class="fu">levels</span>(sd<span class="sc">$</span>duration)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<pre><code>[1] "&lt;12h"   "12h-1d" "1d-1w"  "1w-30d" "&gt;30d"</code></pre>
+<p>The method is a nested floor, not a moving average: for each window width it finds the energy that never leaves the store across <em>any</em> window of that length, then takes successive differences. Energy in the <code>&gt;30d</code> band is energy that was present throughout every 30-day window — it never came out.</p>
+<div class="callout callout-style-simple callout-note">
+<div class="callout-body d-flex">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-body-container">
+<p><strong>This needs the full year.</strong> The bands go up to 30 days, so a 288-slice sample (<a href="#sec-sample" class="quarto-xref"><span>Section 8.6</span></a>) cannot support them — twelve scattered days contain no 30-day window at all. The decomposition is shipped precomputed so you need not re-solve:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>sd <span class="ot">&lt;-</span> <span class="fu">readRDS</span>(<span class="st">"data/belgium_storage_duration.rds"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+</div>
+</div>
+</div>
+<p><strong>6.11 — Decompose the two stores.</strong> Belgium has a battery and a hydrogen store. Compute the share of each one’s average level that falls in each band, and say what distinguishes them.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Solution 6.11">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-13-contents" aria-controls="callout-13" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Solution 6.11
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-13" class="callout-13-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>sd <span class="sc">|&gt;</span></span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(stg, duration) <span class="sc">|&gt;</span></span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">mean =</span> <span class="fu">mean</span>(value), <span class="at">.groups =</span> <span class="st">"drop"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(stg) <span class="sc">|&gt;</span></span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">share =</span> <span class="dv">100</span> <span class="sc">*</span> mean <span class="sc">/</span> <span class="fu">sum</span>(mean)) <span class="sc">|&gt;</span></span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>band</th>
+<th style="text-align: right;">STG_BATTERY</th>
+<th style="text-align: right;">STG_H2</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>&lt;12h</td>
+<td style="text-align: right;">24.3%</td>
+<td style="text-align: right;">0.01%</td>
+</tr>
+<tr class="even">
+<td>12h–1d</td>
+<td style="text-align: right;">16.5%</td>
+<td style="text-align: right;">0.02%</td>
+</tr>
+<tr class="odd">
+<td>1d–1w</td>
+<td style="text-align: right;">40.8%</td>
+<td style="text-align: right;">0.41%</td>
+</tr>
+<tr class="even">
+<td>1w–30d</td>
+<td style="text-align: right;">17.1%</td>
+<td style="text-align: right;">1.11%</td>
+</tr>
+<tr class="odd">
+<td><strong>&gt;30d</strong></td>
+<td style="text-align: right;"><strong>1.3%</strong></td>
+<td style="text-align: right;"><strong>98.4%</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Two storages, the same units, and almost no overlap. <strong>98.4% of the hydrogen store’s energy sits for more than a month</strong>; the battery has 1.3% there and does most of its work inside a week.</p>
+<p>That is the difference between the two technologies stated as a <em>result</em> rather than an assumption. Nothing in the model declared H₂ to be seasonal — no cycle count, no duration parameter. It came out that way because the optimiser found that the cheapest way to cover a winter lull is to fill a store in summer.</p>
+<p>Now plot it. The interesting view is over time, stacked:</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>sd <span class="sc">|&gt;</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(stg <span class="sc">==</span> <span class="st">"STG_H2"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(datetime, value, <span class="at">fill =</span> duration)) <span class="sc">+</span></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_area</span>() <span class="sc">+</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_d</span>(<span class="at">option =</span> <span class="st">"D"</span>, <span class="at">direction =</span> <span class="sc">-</span><span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"storage level"</span>, <span class="at">fill =</span> <span class="st">"held for"</span>,</span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"STG_H2 — a seasonal store"</span>) <span class="sc">+</span></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>sd <span class="sc">|&gt;</span></span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(stg <span class="sc">==</span> <span class="st">"STG_BATTERY"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggplot</span>(<span class="fu">aes</span>(datetime, value, <span class="at">fill =</span> duration)) <span class="sc">+</span></span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_area</span>() <span class="sc">+</span></span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_fill_viridis_d</span>(<span class="at">option =</span> <span class="st">"D"</span>, <span class="at">direction =</span> <span class="sc">-</span><span class="dv">1</span>) <span class="sc">+</span></span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(<span class="at">x =</span> <span class="cn">NULL</span>, <span class="at">y =</span> <span class="st">"storage level"</span>, <span class="at">fill =</span> <span class="st">"held for"</span>,</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>       <span class="at">title =</span> <span class="st">"STG_BATTERY — a daily cycler"</span>) <span class="sc">+</span></span>
+<span id="cb29-8"><a href="#cb29-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_bw</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The hydrogen chart fills from below with a <code>&gt;30d</code> block that swells through summer and drains through winter. The battery chart is a thin band of short durations churning all year.</p>
+</div>
+</div>
+</div>
+<p><strong>6.11b — Why this matters for sampling.</strong> Re-read the caution in <a href="#sec-sample" class="quarto-xref"><span>Section 8.6</span></a>, then explain what a twelve-day sample would have done to the hydrogen result — and what that implies for any study that samples representative days and then reports on long-duration storage.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Solution 6.11b">
+<div class="callout-header d-flex align-content-center collapsed" data-bs-toggle="collapse" data-bs-target=".callout-14-contents" aria-controls="callout-14" aria-expanded="false" aria-label="Toggle callout">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Solution 6.11b
+</div>
+<div class="callout-btn-toggle d-inline-block border-0 py-1 ps-1 pe-0 float-end"><i class="callout-toggle"></i></div>
+</div>
+<div id="callout-14" class="callout-14-contents callout-collapse collapse">
+<div class="callout-body-container callout-body">
+<p>A twelve-day sample has no 30-day window, so the <code>&gt;30d</code> band — <strong>98.4% of this store’s energy</strong> — cannot exist in it. Worse, the sample is twelve <em>disjoint</em> days: with <code>fullYear = TRUE</code> the state of charge cycles over the slices present and carries across the seams, so the model sees twelve short cycles rather than one seasonal one.</p>
+<p>The store would still appear in the results. It would simply be small, cheap and busy — a large battery. Nothing would error, and no diagnostic would fire.</p>
+<p>This is the honest limit of representative-period sampling, and it is worth stating plainly whenever you use one: <strong>a sample can only find storage cycles shorter than the sample itself.</strong> Studies that sample days and then report on seasonal hydrogen are, quite often, reporting on an artefact of their own time resolution.</p>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-provenance" class="level2" data-number="8.15">
+<h2 data-number="8.15" class="anchored" data-anchor-id="sec-provenance"><span class="header-section-number">8.15</span> How this model was derived</h2>
+<p>The chain, so you can judge what the numbers mean:</p>
+<ol type="1">
+<li><strong>PyPSA-Eur</strong> built a Belgian electricity network with its own Snakemake workflow: OpenStreetMap grid topology, a power-plant database, ERA5 and SARAH-3 weather reanalysis turned into hourly capacity factors by <a href="https://atlite.readthedocs.io">atlite</a>, and an hourly demand series. Belgium was clustered to <strong>one node</strong> and kept at its full <strong>8,760 hours</strong>.</li>
+<li><strong>A converter</strong> (<code>PyPSA-Eur-to-energyRt</code>, not part of this course) mapped each PyPSA component to an energyRt object: <code>Generator</code> → <code>technology</code> + a <code>weather</code> factor, <code>Load</code> → <code>demand</code>, <code>Line</code>/<code>Link</code> → <code>trade</code>, <code>StorageUnit</code> and <code>Store</code>+<code>Link</code> → <code>storage</code>, carriers → <code>commodity</code>.</li>
+<li>The result was serialised to <code>data/belgium_copperplate.rds</code> (about 285 KB).</li>
+</ol>
+<p>Three things you should know about it:</p>
+<ul>
+<li><p><strong>Nothing was changed to make it agree.</strong> On the full year the weighting question does not arise: <code>year_fraction = 1</code>, so <code>pTimesliceWeight = 1</code> is simply correct, and both models charge annual capital against annual operating cost. The base case reproduces PyPSA <strong>to the cent</strong> (<a href="#sec-growth" class="quarto-xref"><span>Section 8.13</span></a>), which is the strongest statement available about the conversion.</p>
+<p>That is <em>not</em> true of a sampled model, and the difference is not small. The 5-node one-week dataset shipped alongside (<code>belgium_model.rds</code>) keeps PyPSA’s own <code>snapshot_weightings.objective = 1</code>, charging 168 hours of fuel against a full year of capital. Let energyRt annualise that week instead — the default it would otherwise choose — and capacity becomes cheap relative to fuel, so the model builds renewables until <strong>no fossil plant dispatches at all</strong>:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 21%">
+<col style="width: 28%">
+<col style="width: 28%">
+<col style="width: 21%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>weighting</th>
+<th style="text-align: right;">objective</th>
+<th style="text-align: right;">CO₂</th>
+<th>fuels burned</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>PyPSA (weight 1)</td>
+<td style="text-align: right;">164,899,752</td>
+<td style="text-align: right;">274,037 t</td>
+<td>gas, nuclear, waste, biomass, oil</td>
+</tr>
+<tr class="even">
+<td>annualised (52.14)</td>
+<td style="text-align: right;">245,652,738</td>
+<td style="text-align: right;"><strong>0</strong></td>
+<td>H₂ charge/discharge only</td>
+</tr>
+</tbody>
+</table>
+<p>A model with no emissions has nothing for <a href="#sec-tax" class="quarto-xref"><span>Section 8.10</span></a> or <a href="#sec-cap" class="quarto-xref"><span>Section 8.11</span></a> to act on. On a <strong>sampled</strong> run the weighting convention is not a technicality — it decides whether the model has a fossil fleet at all. On a full year there is nothing to decide.</p></li>
+<li><p><strong>Transport, not power flow.</strong> PyPSA imposes Kirchhoff’s voltage law on AC cycles; energyRt’s <code>trade</code> is a transport formulation. It makes no difference here — a copperplate has no lines — but it is the largest accepted semantic gap between the two tools, and <a href="07-pypsa-replication.html" class="quarto-xref"><span>Chapter 9</span></a> measures it at 3.38% on a 41-node network.</p></li>
+<li><p><strong>Excluded entities.</strong> The converter’s policy is <em>detect, name, record, exclude</em> — never clamp, never substitute a plausible value. Whatever was dropped is recorded:</p></li>
+</ul>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a><span class="fu">readRDS</span>(<span class="st">"data/belgium_provenance.rds"</span>)   <span class="co"># the 5-node dataset's register</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="callout callout-style-simple callout-important">
+<div class="callout-body d-flex">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-body-container">
+<p><strong>The model describes one year, 2050, and it does not know that.</strong> Capacity rows are keyed to <code>year = 2050</code> and non-extendable plant is closed off with <code>vintage$end = 2049</code>. Extend the horizon earlier and both silently stop applying — which is how <a href="#sec-horizon" class="quarto-xref"><span>Section 8.8</span></a> ended up building 10,999 MW of biomass against a stated stock of 113 MW, and reporting zero emissions for a system burning 4.6 million units of gas.</p>
+<p>This is the general hazard with any converted model: it carries the assumptions of the run it came from. Audit the bounds before trusting a horizon it was not built for.</p>
+</div>
+</div>
+</div>
+</section>
+<section id="sec-licences" class="level2" data-number="8.16">
+<h2 data-number="8.16" class="anchored" data-anchor-id="sec-licences"><span class="header-section-number">8.16</span> Data licences</h2>
+<p>The dataset embeds real data, so its licences travel with it. PyPSA-Eur publishes a per-source inventory (<code>doc/data_inventory.csv</code>); the electricity-only Belgian build draws on these:</p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>source</th>
+<th>used for</th>
+<th>licence</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>technology-data (<code>costs</code>)</td>
+<td>capital, fixed and variable costs</td>
+<td>CC-BY-4.0</td>
+</tr>
+<tr class="even">
+<td>powerplantmatching</td>
+<td>existing plant, capacity, location</td>
+<td>CC-BY-4.0</td>
+</tr>
+<tr class="odd">
+<td>ERA5 (Copernicus / ECMWF)</td>
+<td>wind and temperature reanalysis</td>
+<td>Copernicus licence — commercial use permitted, attribution required</td>
+</tr>
+<tr class="even">
+<td>SARAH-3 (EUMETSAT CM SAF)</td>
+<td>solar irradiance</td>
+<td>free use, attribution required</td>
+</tr>
+<tr class="odd">
+<td>OpenStreetMap (<code>osm</code>, <code>osm_boundaries</code>)</td>
+<td>grid topology, substations</td>
+<td><strong>ODbL-1.0</strong></td>
+</tr>
+<tr class="even">
+<td>CORINE / Copernicus land cover</td>
+<td>land eligibility</td>
+<td>CC-BY-4.0 (CORINE: custom, CC-BY-like)</td>
+</tr>
+<tr class="odd">
+<td>Natura 2000, EEZ, GEBCO</td>
+<td>protected areas, maritime zones, bathymetry</td>
+<td>CC-BY-4.0 / public domain</td>
+</tr>
+<tr class="even">
+<td>Eurostat NUTS 2021</td>
+<td>region geometry</td>
+<td>EC reuse policy (2011/833/EU)</td>
+</tr>
+<tr class="odd">
+<td>ENTSO-E / OPSD demand series</td>
+<td>hourly electricity demand</td>
+<td><strong>listed as “unknown”</strong></td>
+</tr>
+</tbody>
+</table>
+<p>Two entries need care. Neither is a reason not to use the data — only a reason to know:</p>
+<ul>
+<li><strong>ODbL on OpenStreetMap.</strong> ODbL is share-alike for <em>derived databases</em>. The grid capacities in the <code>trade</code> objects descend from OSM, so a redistributed derivative carries attribution and share-alike obligations. It is not a commercial restriction.</li>
+<li><strong>The demand series licence is genuinely unresolved.</strong> PyPSA-Eur’s own inventory records <code>entsoe_electricity_demand</code> and <code>opsd_electricity_demand</code> as licence <strong>unknown</strong>. Treat redistribution of the demand numbers as an open question rather than a settled one.</li>
+</ul>
+<div class="callout callout-style-simple callout-important">
+<div class="callout-body d-flex">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-body-container">
+<p><strong>On commercial use.</strong> The two entries in PyPSA-Eur’s inventory that <em>do</em> restrict commercial use or redistribution — Eurostat <code>lau_regions</code> (“permission to download only if used for non-commercial purposes”) and BGR <code>aquifer_data</code> (“right to use without restriction but no right to redistribute”) — are <strong>sector-coupling inputs and are not present in this electricity-only build</strong>. This dataset therefore carries no non-commercial clause. The one open item is the demand series’ <em>unknown</em> licence, which is an absence of information rather than a known restriction.</p>
+</div>
+</div>
+</div>
+<p>This table is a summary, not legal advice, and licences change. Check <code>doc/data_inventory.csv</code> in the PyPSA-Eur version you actually use before redistributing anything derived from it.</p>
+</section>
+<section id="where-this-connects" class="level2" data-number="8.17">
+<h2 data-number="8.17" class="anchored" data-anchor-id="where-this-connects"><span class="header-section-number">8.17</span> Where this connects</h2>
+<p>You have now done, on real data, what the earlier chapters did on toys: <a href="03-regions-and-trade.html" class="quarto-xref"><span>Chapter 5</span></a>’ trade became five Belgian nodes, <a href="04-special-processes.html" class="quarto-xref"><span>Chapter 6</span></a>’ technologies became a plant fleet, and <a href="02-time-resolution.html" class="quarto-xref"><span>Chapter 4</span></a>’s storage became a battery and a hydrogen store. What is new is everything <em>around</em> the model — measuring it, shrinking it, moving it between solvers, stretching its horizon, and knowing where its numbers came from.</p>
+<p>That last part matters most. A model you cannot trace is a model you cannot defend, and “it came from PyPSA-Eur” is the beginning of an answer, not the end of one.</p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./05-electric-vehicles.html" class="pagination-link" aria-label="Electric vehicles: when to charge">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Electric vehicles: when to charge</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./07-pypsa-replication.html" class="pagination-link" aria-label="Replication of PyPSA-Eur in energyRt">
+        <span class="nav-page-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Replication of PyPSA-Eur in energyRt</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

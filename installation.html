@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.10.18">
+<meta name="generator" content="quarto-1.9.30">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -12,13 +12,10 @@
 /* Default styles provided by pandoc.
 ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
 */
+code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
-div.columns{display: flex; gap: 1.5em;}
-div.column{flex: auto;}
-@media screen {
-div.columns{gap: min(4vw, 1.5em);}
-div.column{overflow-x: auto;}
-}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
 ul.task-list li input[type="checkbox"] {
@@ -79,10 +76,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <script src="site_libs/quarto-html/tippy.umd.min.js"></script>
 <script src="site_libs/quarto-html/anchor.min.js"></script>
 <link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-b6a8276bf55561bdbc268162d41bd1f7.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-3d497cff885f6278d37568d0ef0763f8.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-9e3e5b9121e68b3f077afb32f2c64d95.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -219,6 +216,35 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
  <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Special cases of processes</span></span></a>
   </div>
 </li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./05-electric-vehicles.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Electric vehicles: when to charge</span></span></a>
+  </div>
+</li>
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./06-real-model.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">A real model, end to end</span></span></a>
+  </div>
+</li>
+      </ul>
+  </li>
+        <li class="sidebar-item sidebar-item-section">
+      <div class="sidebar-item-container"> 
+            <a class="sidebar-item-text sidebar-link text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true">
+ <span class="menu-text">Case study</span></a>
+          <a class="sidebar-item-toggle text-start" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar-section-2" role="navigation" aria-expanded="true" aria-label="Toggle section">
+            <i class="bi bi-chevron-right ms-2"></i>
+          </a> 
+      </div>
+      <ul id="quarto-sidebar-section-2" class="collapse list-unstyled sidebar-section depth1 show">  
+          <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./07-pypsa-replication.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Replication of PyPSA-Eur in energyRt</span></span></a>
+  </div>
+</li>
       </ul>
   </li>
     </ul>
@@ -316,7 +342,14 @@ Important
 <span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">install_energyRt</span>(<span class="at">branch =</span> <span class="st">"dev"</span>)      <span class="co"># development version -- use this for the course</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>On Linux it prints the exact <code>sudo</code> command for any missing system libraries (it never runs <code>sudo</code> itself) — run that, then re-run <code>install_energyRt()</code>.</p>
-<p>For the training, install the <strong>development</strong> version with <code>install_energyRt(branch = "dev")</code>: it carries the features the exercises rely on (the YAML technology specifications, <code>add()</code>, and the WACC/SDR discounting). The exercises require <strong>energyRt ≥ 0.80</strong> — the top of each chapter runs <code>source("R/workshop-model.R")</code>, which checks your installed version and warns, before any exercise runs, if it is too old.</p>
+<p>For the training, install the <strong>development</strong> version with <code>install_energyRt(branch = "dev")</code>: it carries the features the exercises rely on. The exercises require <strong>energyRt ≥ 0.85</strong> — the top of each chapter runs <code>source("R/workshop-model.R")</code>, which checks your installed version and warns, before any exercise runs, if it is too old.</p>
+<p>0.85 is not an arbitrary floor. Several chapters use things that arrived in it:</p>
+<ul>
+<li>the <strong>three-role storage</strong> — <code>@input</code>, <code>@storage</code> and <code>@output</code> may each name a different commodity, which is what lets a vehicle be one object in <a href="05-electric-vehicles.html" class="quarto-xref"><span>Chapter 7</span></a> rather than a storage plus two technologies;</li>
+<li><strong><code>storage_duration()</code></strong>, which splits a storage level into how long the energy actually sits there;</li>
+<li>a storage capacity read as a <strong>rate</strong> (<code>cap2act</code>), so <code>cap.up = 7</code> means 7 kW on any calendar;</li>
+<li><code>draw()</code> and <code>autoplot()</code> fixes for converted models that span many regions, used throughout <a href="06-real-model.html" class="quarto-xref"><span>Chapter 8</span></a> and <a href="07-pypsa-replication.html" class="quarto-xref"><span>Chapter 9</span></a>.</li>
+</ul>
 <p>Once it finishes, verify your setup in a fresh session:</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(energyRt)</span>
