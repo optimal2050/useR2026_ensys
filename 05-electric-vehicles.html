@@ -286,16 +286,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<div class="callout callout-style-simple callout-important">
-<div class="callout-body d-flex">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-body-container">
-<p><strong>Work in progress.</strong> The three models below have been run locally on GLPK and the numbers quoted in the text are their actual output. The book itself renders without executing them (<code>eval: false</code> in <code>_quarto.yml</code>), because GitHub Pages has no solver.</p>
-</div>
-</div>
-</div>
 <p>In <a href="04-special-processes.html#sec-ldv" class="quarto-xref"><span>Section 6.3</span></a> a vehicle was a <strong>technology</strong>: fuel in, passenger-kilometres out, now. That is the right object for a fleet’s <em>annual</em> fuel use, and the wrong one for the question that actually makes electric vehicles interesting — <strong>when</strong> the electricity is drawn from the grid. A technology consumes in the same timeslice it produces. A car charges at night and drives in the morning.</p>
 <p>Moving energy between timeslices is what a <code>storage</code> does, so here the vehicle <strong>is</strong> the storage:</p>
 <table class="caption-top table">
@@ -317,45 +307,32 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tr>
 </tbody>
 </table>
+<p>The whole chapter runs on one day, resolved hourly:</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>car <span class="ot">&lt;-</span> <span class="fu">newStorage</span>(</span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"CAR"</span>,</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">input    =</span> <span class="fu">list</span>(<span class="at">comm =</span> <span class="st">"CHG"</span>, <span class="at">cap.up =</span> <span class="dv">7</span>),     <span class="co"># 7 kW on-board charger</span></span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">storage  =</span> <span class="fu">list</span>(<span class="at">comm =</span> <span class="st">"BAT"</span>, <span class="at">cap.up =</span> <span class="dv">60</span>),    <span class="co"># 60 kWh battery</span></span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">output   =</span> <span class="fu">list</span>(<span class="at">comm =</span> <span class="st">"KM"</span>),                  <span class="co"># kilometres</span></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">seff     =</span> <span class="fu">data.frame</span>(<span class="at">inpeff =</span> <span class="fl">0.90</span>, <span class="at">outeff =</span> <span class="dv">6</span>),</span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">af       =</span> <span class="fu">data.frame</span>(<span class="at">cinp.up =</span> <span class="dv">1</span>, <span class="at">cout.up =</span> <span class="dv">1</span>),</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">capacity =</span> <span class="fu">list</span>(<span class="at">cap.up =</span> <span class="dv">120</span>),                 <span class="co"># motor, km/h</span></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">duration =</span> <span class="fu">data.frame</span>(<span class="at">duration.lo =</span> <span class="dv">0</span>, <span class="at">duration.up =</span> <span class="fl">1e6</span>),</span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">vintage  =</span> <span class="fu">data.frame</span>(<span class="at">olife =</span> <span class="dv">10</span>L))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>hrs <span class="ot">&lt;-</span> <span class="fu">sprintf</span>(<span class="st">"h%02d"</span>, <span class="dv">0</span><span class="sc">:</span><span class="dv">23</span>)        <span class="co"># 24 hourly timeslices: h00 ... h23</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>YF  <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">/</span> <span class="dv">365</span>                       <span class="co"># this calendar is ONE DAY out of a year</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>cal <span class="ot">&lt;-</span> <span class="fu">newCalendar</span>(</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">timetable =</span> <span class="fu">make_timetable</span>(<span class="at">struct =</span> <span class="fu">list</span>(<span class="at">ANNUAL =</span> <span class="st">"ANNUAL"</span>, <span class="at">HOUR =</span> hrs),</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>                             <span class="at">year_fraction =</span> YF),</span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">year_fraction =</span> YF, <span class="at">name =</span> <span class="st">"one_day"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Saying <code>year_fraction = 1/365</code> is what makes a timeslice a real hour: each slice gets <code>share = 1/8760</code>, so <code>cap.up = 7</code> below means 7 kW and needs no further argument. It also sets the slice <code>weight</code> to 365, which is why the costs quoted are a day’s bill repeated across the year.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>car <span class="ot">&lt;-</span> <span class="fu">newStorage</span>(</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"CAR"</span>,</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">input    =</span> <span class="fu">list</span>(<span class="at">comm =</span> <span class="st">"CHG"</span>, <span class="at">cap.up =</span> <span class="dv">7</span>),     <span class="co"># 7 kW on-board charger</span></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">storage  =</span> <span class="fu">list</span>(<span class="at">comm =</span> <span class="st">"BAT"</span>, <span class="at">cap.up =</span> <span class="dv">60</span>),    <span class="co"># 60 kWh battery</span></span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">output   =</span> <span class="fu">list</span>(<span class="at">comm =</span> <span class="st">"KM"</span>),                  <span class="co"># kilometres</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">seff     =</span> <span class="fu">data.frame</span>(<span class="at">inpeff =</span> <span class="fl">0.90</span>, <span class="at">outeff =</span> <span class="dv">6</span>),</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">af       =</span> <span class="fu">data.frame</span>(<span class="at">cinp.up =</span> <span class="dv">1</span>, <span class="at">cout.up =</span> <span class="dv">1</span>),</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">capacity =</span> <span class="fu">list</span>(<span class="at">cap.up =</span> <span class="dv">120</span>),                 <span class="co"># motor, km/h</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">duration =</span> <span class="fu">data.frame</span>(<span class="at">duration.lo =</span> <span class="dv">0</span>, <span class="at">duration.up =</span> <span class="fl">1e6</span>),</span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">vintage  =</span> <span class="fu">data.frame</span>(<span class="at">olife =</span> <span class="dv">10</span>L))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>Two things in there are worth stopping on.</p>
 <p><strong><code>seff</code> is not a round trip here.</strong> <code>inpeff = 0.90</code> is charging loss (grid kWh → battery kWh) but <code>outeff = 6</code> is <strong>six kilometres per kWh</strong> — a conversion between two different commodities, not an efficiency between 0 and 1. Because <code>@input</code>, <code>@storage</code> and <code>@output</code> may each name a different commodity, <code>seff</code> became a pair of cross-commodity factors. Only when all three coincide is it the round-trip efficiency you are used to.</p>
 <p><strong><code>duration</code> is switched off on purpose.</strong> <code>duration</code> is the ratio of storing capacity to output capacity, and it is normally a number of <em>hours</em>. Here the reservoir is in kWh and the motor in km/h — different dimensions — so the ratio is not an hour count and pinning it would be meaningless. Opening it and bounding the battery directly with <code>storage = list(cap.up = 60)</code> says what we mean.</p>
-<div class="callout callout-style-default callout-important callout-titled">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
-</div>
-<div class="callout-title-container flex-fill">
-<span class="screen-reader-only">Important</span>An energyRt calendar is a YEAR — so say which part of it you mean
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p>This is the trap that makes or breaks every number below.</p>
-<p>A capacity bound is <code>cap.up * cap2act * pTimesliceShare</code>, where <code>cap2act</code> is flow per unit of capacity per <strong>year</strong>. It defaults to 8760 for a storage, so <code>cap.up = 7</code> means 7 per hour — <em>provided a timeslice really is an hour</em>.</p>
-<p>Declare 24 timeslices as a whole year and each one is <strong>365 hours</strong> long, so the same <code>cap.up = 7</code> quietly means 0.019 kW. The fix is not to fiddle with <code>cap2act</code>: it is to say that this calendar covers <strong>one day out of the year</strong>.</p>
-<div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>YF  <span class="ot">&lt;-</span> <span class="dv">1</span> <span class="sc">/</span> <span class="dv">365</span>                       <span class="co"># this calendar is ONE DAY of a year</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>cal <span class="ot">&lt;-</span> <span class="fu">newCalendar</span>(</span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">timetable =</span> <span class="fu">make_timetable</span>(<span class="at">struct =</span> <span class="fu">list</span>(<span class="at">ANNUAL =</span> <span class="st">"ANNUAL"</span>, <span class="at">HOUR =</span> hrs),</span>
-<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>                             <span class="at">year_fraction =</span> YF),</span>
-<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">year_fraction =</span> YF, <span class="at">name =</span> <span class="st">"one_day"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
-</div>
-<p>Now each slice has <code>share = 1/8760</code> — a real hour — <code>cap.up = 7</code> is 7 kW with no extra arguments, and the timeslice <code>weight</code> comes out as 365, so costs are annualised as “this day, repeated all year”. That is why the objectives below are 365x a single day’s fuel bill.</p>
-<p>The <strong>battery</strong> never takes a <code>cap2act</code>: 60 kWh is 60 kWh however the year is sliced. A <code>technology</code> still needs one stated explicitly (<code>pTechCap2act</code> defaults to 1), which is why <code>POST</code> below carries <code>cap2act = 8760</code>.</p>
-</div>
-</div>
 <section id="sec-ev-commute" class="level2" data-number="7.1">
 <h2 data-number="7.1" class="anchored" data-anchor-id="sec-ev-commute"><span class="header-section-number">7.1</span> 5.1 — Passenger car: the schedule is given</h2>
 <p><em>Learning goal:</em> a storage whose input, stored and output commodities are all different; charging as a <strong>timing</strong> decision under a price signal.</p>
@@ -483,7 +460,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <li><a href="04-special-processes.html" class="quarto-xref"><span>Chapter 6</span></a> introduced multi-input/multi-output processes; a storage with three different commodities is the same idea applied across time.</li>
 <li><code>storage_duration()</code> in energyRt splits a storage level into how long the energy actually sits there — see <a href="06-real-model.html#sec-duration" class="quarto-xref"><span>Section 8.14</span></a>, where it separates a battery that cycles daily from a hydrogen store that holds energy for months. On a car it would separate the overnight charge from the buffer that never empties.</li>
 </ul>
-<p><em>To be completed with worked solutions before the session.</em></p>
 
 
 </section>

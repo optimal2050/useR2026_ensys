@@ -299,8 +299,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </header>
 
 
-<p>Every model so far you built by hand, object by object, small enough to hold in your head. This chapter starts from the other end: a model <strong>derived from <a href="https://pypsa-eur.readthedocs.io">PyPSA-Eur</a></strong> — Belgium, five nodes, one week of hourly detail, real plant, real weather, real demand — and does the things you actually do with a model you did not write.</p>
-<p>Solve it. Measure it. Shrink it. Stretch it to 2050. Let it retire its own plant. Price its carbon, then cap it. Compare what changed.</p>
+<p>Every model so far you built by hand, object by object, small enough to hold in your head. This chapter starts from the other end: a model <strong>derived from <a href="https://pypsa-eur.readthedocs.io">PyPSA-Eur</a></strong> — Belgium as a single node, a full year at hourly resolution, with real plant, real weather and real demand — and does the things you actually do with a model you did not write.</p>
+<p>Solve it. Measure it. Shrink it. Sample it. Stretch it to 2050. Let it retire its own plant. Price its carbon, then cap it. Double its demand and check the answer against PyPSA.</p>
+<p>Two smaller and larger variants of the same conversion ship alongside it, and <a href="#sec-choose" class="quarto-xref"><span>Section 8.2</span></a> shows how to swap them in.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(energyRt)</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(dplyr)</span>
