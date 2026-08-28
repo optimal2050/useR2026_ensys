@@ -1,0 +1,761 @@
+---
+output: html_document
+editor_options:
+  chunk_output_type: inline
+---
+
+# Life-cycle analysis {#sec-lca}
+
+Every chapter so far asked one question of a technology: *what does it cost to
+run?* A life-cycle question is different. It asks what the technology costs the
+world **before** it runs, **while** it stands, and **after** it stops — land
+occupied, steel poured, CO₂ embodied, material recovered.
+
+None of that needs a new kind of object. It all rides on **auxiliary flows**
+(@sec-processes): a commodity linked to a process by a coefficient named
+`<driver>2a<inp|out>`. What makes it life-cycle analysis is *which driver*:
+
+| coefficient | driver | fires | shape in time |
+|---|---|---|---|
+| `cap2ainp` / `cap2aout` | **standing** capacity | every year the plant exists | a **plateau** |
+| `ncap2ainp` / `ncap2aout` | **new** capacity | the milestone it is built | a **pulse** |
+| `pho2ainp` / `pho2aout` | capacity **reaching end of life** | the milestone it ages out | a pulse, once |
+| `ret2ainp` / `ret2aout` | capacity **retired early** | the milestone it is scrapped | a pulse, once |
+
+The whole chapter is one wind farm seen through those four lenses. Nothing here
+is bigger than a page of code, and everything solves in under a second.
+
+```{r}
+source("R/workshop-model.R")
+library(tidyr)     # pivot_wider(), for the quantity x milestone tables
+```
+
+A single annual timeslice, and six milestones over 2020–2045:
+
+```{r}
+cal <- newCalendar(timetable = make_timetable(struct = list(ANNUAL = "ANNUAL")),
+                   name = "lca_annual")
+hor <- newHorizon(2020:2045, intervals = c(1, 5, 5, 5, 5, 5))
+YRS <- hor@intervals$mid
+YRS
+hor@intervals$end - hor@intervals$start + 1   # period lengths, in years
+```
+
+::: {.callout-important appearance="simple"}
+**The first period is one year long, the rest are five.** That is deliberate.
+Almost every quantity below is a **per-year rate**, and unequal periods are the
+only way to see the difference: a phase-out of `4` in a five-year period means
+**20** units of capacity left, not 4. Equal periods hide the distinction, and
+hiding it is how rate/total mistakes survive.
+:::
+
+One reading pattern serves the whole chapter, and it is nothing but the API you
+already know: `getData()` accepts several variable names at once and returns
+them stacked with a `name` column, and `pivot_wider()` turns that into the
+*quantity × milestone* table every section reads. The same five-line pipe
+appears after every solve — deliberately, so that by the end of the chapter it
+is muscle memory rather than magic:
+
+```r
+getData(scen, name = c("vTechCap", ...), merge = TRUE, drop.zeros = FALSE) |>
+  mutate(series = ifelse(is.na(comm), name, paste0(name, "[", comm, "]"))) |>
+  select(series, year, value) |>
+  mutate(value = round(value, 4)) |>
+  pivot_wider(names_from = year, values_from = value, values_fill = 0) |>
+  arrange(series)
+```
+
+`drop.zeros = FALSE` is not decoration. A schedule that runs down to **nothing**
+records a zero, and a zero dropped is a fleet that never leaves.
+
+## 6.1 — Retiring on a schedule {#sec-lca-schedule}
+
+*Learning goal:* what `capacity$stock` actually means, and the two parameters
+energyRt derives from it.
+
+`stock` is the **legacy fleet still standing** at each milestone — plant that
+exists because it was built before the model starts. Give it a falling path and
+you have declared a decommissioning timetable:
+
+```{r}
+FLEET <- data.frame(year  = c(2020L, 2028L, 2033L, 2038L, 2043L),
+                    stock = c(100,   100,   60,    20,    0))
+```
+
+The farm occupies land while it stands — `cap2ainp`, the plateau coefficient —
+at 0.2 ha per MW. Objects first:
+
+```{r}
+WND  <- newCommodity(name = "WND",  desc = "Wind resource",   timeframe = "ANNUAL")
+ELC  <- newCommodity(name = "ELC",  desc = "Electricity",     timeframe = "ANNUAL")
+LAND <- newCommodity(name = "LAND", desc = "Occupied land",   timeframe = "ANNUAL")
+
+SWND  <- newSupply(name = "SWND",  commodity = "WND",
+                   supply = data.frame(cost = 0))
+SLAND <- newSupply(name = "SLAND", commodity = "LAND",
+                   supply = data.frame(cost = 0))
+
+WIND <- newTechnology(
+  name    = "WIND",
+  input   = list(comm = "WND"),
+  output  = list(comm = "ELC"),
+  cap2act = 1,
+  afs     = data.frame(afs.up = 1),
+  capacity = FLEET,
+  invcost = data.frame(invcost = 1),
+  vintage = data.frame(olife = 40L),
+  aux     = data.frame(acomm = "LAND", unit = "ha"),
+  aeff    = data.frame(acomm = "LAND", cap2ainp = 0.2))
+
+DEM <- newDemand(name = "DEM", commodity = "ELC",
+                 demand = data.frame(demand = 5))
+```
+
+Then the repository, the model, and the solve:
+
+```{r}
+repo_FLEET <- newRepository("repo_FLEET",
+                            WND, ELC, LAND, SWND, SLAND, WIND, DEM)
+
+mod_FLEET <- newModel(
+  name     = "LC_FLEET",
+  desc     = "A wind fleet retiring on a schedule",
+  data     = repo_FLEET,
+  region   = "R1",
+  horizon  = hor,
+  discount = 0,
+  calendar = cal)
+
+s1 <- interpolate_model(mod_FLEET, name = "lc_fleet") |>
+  solve_scenario(echo = FALSE)
+```
+
+```{r}
+getData(s1, name = c("vTechCap", "vTechStockCap", "vTechStockPhaseOut",
+                     "vTechNewCap", "vTechAInp"),
+        merge = TRUE, drop.zeros = FALSE) |>
+  mutate(series = ifelse(is.na(comm), name, paste0(name, "[", comm, "]"))) |>
+  select(series, year, value) |>
+  mutate(value = round(value, 4)) |>
+  pivot_wider(names_from = year, values_from = value, values_fill = 0) |>
+  arrange(series)
+```
+
+Read the rows against each other:
+
+- **`vTechStockCap`** is the legacy fleet: `100 100 100 60 20 0` — exactly the
+  schedule.
+- **`vTechStockPhaseOut`** is what *left*: `8` per year in 2033 and 2038, `4` in
+  2043. A per-year rate again — ×5 years gives 40, 40 and 20, and
+  40 + 40 + 20 = 100, the whole fleet.
+- **`vTechCap`** tracks the fleet until 2043, when the schedule reaches zero and
+  the model has to build 1 MW/yr to keep serving the 5 MW demand.
+- **`vTechAInp[LAND]`** is `0.2 × vTechCap`, to the last decimal. **Land is not
+  released by an event.** The draw simply stops when the capacity does.
+  Occupation is a stock expressed as a recurring flow, and that is the whole idea
+  behind `cap2ainp`.
+
+### What the model derived from your schedule
+
+`stock` carries two different meanings — *what was originally there* and *what is
+still there* — and energyRt splits them into two parameters before solving.
+Interpolation alone (no solve) is enough to see them:
+
+```{r}
+sc1 <- interpolate_model(mod_FLEET, name = "lc_par")
+
+getData(sc1, name = c("pTechStock", "pTechStockNew", "pTechStockSurv"),
+        merge = TRUE) |>
+  select(name, year, value) |>
+  mutate(value = round(value, 4)) |>
+  pivot_wider(names_from = year, values_from = value) |>
+  arrange(name)
+```
+
+- **`pTechStockNew`** — capacity *commissioned* exogenously: the whole 100 MW in
+  the first year, and nothing after, because this schedule only falls.
+- **`pTechStockSurv`** — the share of the previous milestone's fleet the schedule
+  keeps: `60/100 = 0.6`, then `20/60 = 0.333`, then `0/20 = 0`. Its default is
+  **1** ("nothing scheduled to leave"), which is why the early years are simply
+  **absent** (`NA`) from the stored parameter — an absent tuple reads as the
+  default.
+
+Both use only **neighbouring** milestones. That is what makes them invariant when
+you move the model's base year — a share of the *first* year's stock would not be.
+
+**Exercises.**
+
+**6.1a** Change the schedule to `c(100, 100, 60, 20, 20)` — a fleet that stops
+retiring rather than disappearing. Predict `pTechStockSurv` in 2043 before running.
+
+**6.1b** Make the fleet *grow*: `stock = c(100, 100, 140, 140, 140)`. Which
+parameter picks up the increase, and what does `vTechStockPhaseOut` do? Explain
+why a rising `stock` must not read as a negative phase-out.
+
+**6.1c** Move the base year to 2025 and re-run. `pTechStockSurv` should not move.
+Why does that matter for a study that gets re-based every few years?
+
+## 6.2 — Land competition, and what a hectare is worth {#sec-lca-rent}
+
+*Learning goal:* an aux commodity as a **shared budget**, and reading a shadow
+price without a solver's dual.
+
+Two technologies now compete for one landscape. Wind is cheaper to build but
+land-hungry (0.5 ha/MW); solar is dearer and land-light (0.1 ha/MW). The
+`ava.up` on the land supply is the budget:
+
+```{r}
+SUN  <- newCommodity(name = "SUN", desc = "Solar resource", timeframe = "ANNUAL")
+SSUN <- newSupply(name = "SSUN", commodity = "SUN", supply = data.frame(cost = 0))
+
+SLAND50 <- newSupply(name = "SLAND", commodity = "LAND",
+                     supply = data.frame(ava.up = 50, cost = 0))
+
+WIND2 <- newTechnology(
+  name = "WIND", input = list(comm = "WND"), output = list(comm = "ELC"),
+  cap2act = 1, afs = data.frame(afs.up = 1),
+  invcost = data.frame(invcost = 100), vintage = data.frame(olife = 40L),
+  aux  = data.frame(acomm = "LAND", unit = "ha"),
+  aeff = data.frame(acomm = "LAND", cap2ainp = 0.5))
+
+SOLAR <- newTechnology(
+  name = "SOLAR", input = list(comm = "SUN"), output = list(comm = "ELC"),
+  cap2act = 1, afs = data.frame(afs.up = 1),
+  invcost = data.frame(invcost = 160), vintage = data.frame(olife = 40L),
+  aux  = data.frame(acomm = "LAND", unit = "ha"),
+  aeff = data.frame(acomm = "LAND", cap2ainp = 0.1))
+
+DEM100 <- newDemand(name = "DEM", commodity = "ELC",
+                    demand = data.frame(demand = 100))
+
+repo_LAND <- newRepository("repo_LAND", WND, SUN, ELC, LAND,
+                           SWND, SSUN, SLAND50, WIND2, SOLAR, DEM100)
+
+mod_LAND <- newModel(
+  name = "LC_LAND", data = repo_LAND, region = "R1",
+  horizon = hor, discount = 0, calendar = cal)
+
+s_50 <- interpolate_model(mod_LAND, name = "lc_land50") |>
+  solve_scenario(echo = FALSE)
+```
+
+To tighten the budget, swap the land supply and re-solve — `add()` with
+`overwrite = TRUE` replaces the object of the same name, and `update()` gives
+you a copy with one slot changed:
+
+```{r}
+s_40 <- add(mod_LAND, update(SLAND50, supply = data.frame(ava.up = 40, cost = 0)),
+            overwrite = TRUE) |>
+  interpolate_model(name = "lc_land40") |> solve_scenario(echo = FALSE)
+s_31 <- add(mod_LAND, update(SLAND50, supply = data.frame(ava.up = 31, cost = 0)),
+            overwrite = TRUE) |>
+  interpolate_model(name = "lc_land31") |> solve_scenario(echo = FALSE)
+s_30 <- add(mod_LAND, update(SLAND50, supply = data.frame(ava.up = 30, cost = 0)),
+            overwrite = TRUE) |>
+  interpolate_model(name = "lc_land30") |> solve_scenario(echo = FALSE)
+```
+
+`getData()` takes a **named list of scenarios** and adds a `scenario` column,
+so the comparison is one call:
+
+```{r}
+runs <- list(L50 = s_50, L40 = s_40, L31 = s_31, L30 = s_30)
+
+getData(runs, name = "vObjective", merge = TRUE) |>
+  select(scenario, objective = value)
+
+getData(runs, name = "vTechCap", merge = TRUE) |>
+  filter(year == 2043) |>
+  group_by(scenario, tech) |>
+  summarise(MW = sum(value), .groups = "drop") |>
+  pivot_wider(names_from = tech, values_from = MW)
+```
+
+At 50 ha the constraint is slack and the model builds **all wind**. Tighten it
+and solar is bought in, one hectare at a time, purely to save land.
+
+**The shadow price is the slope.** energyRt exports no duals here, so price the
+constraint the way it is *defined* — solve twice and difference:
+
+```{r}
+obj <- getData(runs, name = "vObjective", merge = TRUE)
+o <- setNames(obj$value, obj$scenario)
+c(one_ha = o[["L30"]] - o[["L31"]],
+  ten_ha = (o[["L30"]] - o[["L40"]]) / 10)
+```
+
+**97.5 per hectare**, from a one-hectare step and from a ten-hectare step alike.
+That agreement is the check that matters: it says the answer is on one linear
+facet. Where the two disagree, you have crossed a kink and the "shadow price" is
+not a single number at all.
+
+**Exercises.**
+
+**6.2a** Find the limit at which wind disappears entirely. Is the rent the same
+there?
+
+**6.2b** Step the limit from 50 down to 10 in fives and plot objective against
+limit. Where are the kinks, and what switches at each?
+
+**6.2c** A one-hectare step is a *finite difference*, not a derivative. Construct
+a case where the two estimates above disagree, and say which one you would quote.
+
+## 6.3 — Four life stages, one technology {#sec-lca-stages}
+
+*Learning goal:* the plateau and the pulse side by side — the conceptual spine of
+the whole aux system.
+
+Now the demand **grows**, so the model has to build, and all four coefficients
+fire on the same object:
+
+```{r}
+STEEL <- newCommodity(name = "STEEL", timeframe = "ANNUAL")
+CO2E  <- newCommodity(name = "CO2E",  timeframe = "ANNUAL")
+SCRAP <- newCommodity(name = "SCRAP", timeframe = "ANNUAL")
+SSTEEL <- newSupply(name = "SSTEEL", commodity = "STEEL",
+                    supply = data.frame(cost = 0))
+
+WIND4 <- newTechnology(
+  name = "WIND",
+  input = list(comm = "WND"), output = list(comm = "ELC"), cap2act = 1,
+  afs = data.frame(afs.up = 1), invcost = data.frame(invcost = 1),
+  vintage = data.frame(olife = 15L),
+  aux  = data.frame(acomm = c("LAND", "STEEL", "CO2E", "SCRAP"),
+                    unit  = c("ha",   "t",     "t",    "t")),
+  aeff = data.frame(
+    acomm     = c("LAND", "STEEL", "CO2E", "SCRAP"),
+    cap2ainp  = c(0.2,    NA,      NA,     NA),   # land, while it stands
+    ncap2ainp = c(NA,     150,     NA,     NA),   # steel, at construction
+    ncap2aout = c(NA,     NA,      700,    NA),   # embodied CO2, at construction
+    pho2aout  = c(NA,     NA,      NA,     120))) # scrap, at end of life
+
+DEMG <- newDemand(name = "DEM", commodity = "ELC",
+                  demand = data.frame(year = YRS,
+                                      demand = c(5, 20, 40, 60, 80, 100)))
+
+repo_LIFE <- newRepository("repo_LIFE", WND, ELC, LAND, STEEL, CO2E, SCRAP,
+                           SWND, SLAND, SSTEEL, WIND4, DEMG)
+
+mod_LIFE <- newModel(
+  name = "LC_LIFE", data = repo_LIFE, region = "R1",
+  horizon = hor, discount = 0, calendar = cal)
+
+s4 <- interpolate_model(mod_LIFE, name = "lc_life") |>
+  solve_scenario(echo = FALSE)
+
+getData(s4, name = c("vTechCap", "vTechNewCap", "vTechPhaseOut",
+                     "vTechAInp", "vTechAOut"),
+        merge = TRUE, drop.zeros = FALSE) |>
+  mutate(series = ifelse(is.na(comm), name, paste0(name, "[", comm, "]"))) |>
+  select(series, year, value) |>
+  mutate(value = round(value, 4)) |>
+  pivot_wider(names_from = year, values_from = value, values_fill = 0) |>
+  arrange(series)
+```
+
+Same machinery, opposite shapes:
+
+- **LAND** climbs monotonically with the fleet — `1, 4, 8, 12, 16, 20` = 0.2 ×
+  capacity. A **plateau**, present in every year the plant exists.
+- **STEEL** tracks *building*, not standing — `750, 450, 600, 600, 1200, 1200`
+  = 150 × `vTechNewCap`. A **pulse**: it drops in 2023 even though the fleet
+  grew, because the build *rate* fell.
+- **CO₂E** is the same pulse at 700 t/MW: embodied carbon is paid once, at
+  construction.
+- **SCRAP** appears only from 2038, when the 2020 and 2023 vintages reach their
+  15-year life: `4` MW/yr aging out × 120 t/MW = `480` t/yr.
+
+Read the first column carefully. 2020 is a **one-year** period, so `750` is
+750 t. 2038 is a **five-year** period, so `1200` is 1200 t **per year** — 6,000 t
+in the period. Every one of these numbers is a rate.
+
+**Exercises.**
+
+**6.3a** Confirm `vTechAInp[STEEL] == 150 * vTechNewCap` and
+`vTechAInp[LAND] == 0.2 * vTechCap` for every milestone.
+
+**6.3b** Compute total steel over the horizon in tonnes, weighting each milestone
+by its period length. Compare with the naive column sum. How large is the error?
+
+**6.3c** Shorten `olife` to 10 and re-run. Which rows move, and which do not?
+
+## 6.4 — Embodied against operational {#sec-lca-payback}
+
+*Learning goal:* when a low-carbon plant repays the carbon it was built with.
+
+Two ways to serve 438 GWh a year. Wind carries 700 t CO₂/MW of embodied
+emissions and nothing while running; gas carries 30 t/MW embodied and
+0.35 t/MWh **every hour it runs**. `cap2act = 8760` makes activity read in MWh,
+so `act2aout` is per MWh. The two models share everything except the
+technology:
+
+```{r}
+FUEL <- newCommodity(name = "FUEL", timeframe = "ANNUAL")
+SF   <- newSupply(name = "SF", commodity = "FUEL", supply = data.frame(cost = 0))
+DEM438 <- newDemand(name = "DEM", commodity = "ELC",
+                    demand = data.frame(demand = 438000))
+
+WINDX <- newTechnology(
+  name = "WIND", input = list(comm = "FUEL"), output = list(comm = "ELC"),
+  cap2act = 8760, afs = data.frame(afs.up = 0.5),
+  vintage = data.frame(olife = 40L), invcost = data.frame(invcost = 1),
+  aux  = data.frame(acomm = "CO2E", unit = "t"),
+  aeff = data.frame(acomm = "CO2E", ncap2aout = 700, act2aout = 0))
+
+GASX <- update(WINDX, name = "GAS",
+               aeff = data.frame(acomm = "CO2E", ncap2aout = 30,
+                                 act2aout = 0.35))
+
+repo_WINDX <- newRepository("repo_WINDX", FUEL, ELC, CO2E, SF, WINDX, DEM438)
+repo_GASX  <- newRepository("repo_GASX",  FUEL, ELC, CO2E, SF, GASX,  DEM438)
+
+sw <- newModel(name = "LC_CX", data = repo_WINDX, region = "R1",
+               horizon = hor, discount = 0, calendar = cal) |>
+  interpolate_model(name = "lc_cx_wind") |> solve_scenario(echo = FALSE)
+sg <- newModel(name = "LC_CX", data = repo_GASX, region = "R1",
+               horizon = hor, discount = 0, calendar = cal) |>
+  interpolate_model(name = "lc_cx_gas") |> solve_scenario(echo = FALSE)
+
+getData(list(WIND = sw, GAS = sg), name = "vTechAOut", merge = TRUE,
+        drop.zeros = FALSE) |>
+  filter(comm == "CO2E") |>
+  select(scenario, year, value) |>
+  pivot_wider(names_from = year, values_from = value, values_fill = 0)
+```
+
+Wind emits **35,000 t in 2020 and nothing ever again** — 50 MW × 700 t/MW, once.
+Gas emits **153,300 t every single year**, for as long as it runs.
+
+```{r}
+pulse <- getData(sw, "vTechAOut", merge = TRUE) |>
+  filter(comm == "CO2E", year == 2020) |> pull(value)
+rate <- getData(sg, "vTechAOut", merge = TRUE) |>
+  filter(comm == "CO2E", year == 2043) |> pull(value)
+c(payback_years = pulse / rate, payback_months = 12 * pulse / rate)
+```
+
+**Two point seven months.** The entire embodied burden of the wind farm is repaid
+before its first summer is out. That is the number the "but what about the
+concrete?" argument is usually missing, and it falls out of two coefficients on
+two technologies.
+
+Note gas's 2020 figure is 154,800, not 153,300: the extra 1,500 t is its *own*
+embodied pulse, 50 MW × 30 t/MW, landing in the same year. Both technologies
+carry both kinds of emission. They differ only in the ratio.
+
+**Exercises.**
+
+**6.4a** How high would wind's embodied intensity have to be for the payback to
+reach one year? Is that a plausible number?
+
+**6.4b** Add a carbon price and let the model choose between the two. At what
+price does it switch? Does the embodied pulse affect the switching point at all?
+
+**6.4c** Cumulate both series over the horizon, weighting by period length, and
+plot the crossover.
+
+## 6.5 — Scrap tells you *why* it stopped {#sec-lca-scrap}
+
+*Learning goal:* the same physical event, two different coefficients, because the
+material recovered is genuinely different.
+
+A plant that runs to the end of its life is worn out; what comes back is low-grade
+and modest. A plant scrapped **early** is largely intact, and what comes back is
+worth more. That physical difference is why there are two coefficient pairs and
+not one:
+
+```{r}
+WIND_S <- newTechnology(
+  name = "WIND",
+  input = list(comm = "WND"), output = list(comm = "ELC"), cap2act = 1,
+  afs = data.frame(afs.up = 1), capacity = FLEET,
+  fixom = data.frame(fixom = 8), invcost = data.frame(invcost = 1000),
+  vintage = data.frame(olife = 18L), optimizeRetirement = TRUE,
+  aux  = data.frame(acomm = "SCRAP", unit = "t"),
+  aeff = data.frame(acomm = "SCRAP",
+                    pho2aout = 120,    # worn out at end of life
+                    ret2aout = 200))   # intact, retired early
+
+repo_SCRAP <- newRepository("repo_SCRAP", WND, ELC, SCRAP, SWND, WIND_S, DEM)
+```
+
+The fleet costs 8/MW/yr to keep and only 5 MW of it is needed. Retiring early
+should obviously pay. The model-level switch decides whether the optimiser is
+*allowed* to; two models share one repository:
+
+```{r}
+mod_OFF <- newModel(name = "LC_SCRAP", data = repo_SCRAP, region = "R1",
+                    horizon = hor, discount = 0, calendar = cal,
+                    optimizeRetirement = FALSE)
+mod_ON  <- newModel(name = "LC_SCRAP", data = repo_SCRAP, region = "R1",
+                    horizon = hor, discount = 0, calendar = cal,
+                    optimizeRetirement = TRUE)
+
+s6a <- interpolate_model(mod_OFF, name = "lc_scrap_off") |>
+  solve_scenario(echo = FALSE)
+getData(s6a, "vObjective", merge = TRUE)$value
+
+getData(s6a, name = c("vTechCap", "vTechStockCap", "vTechRetiredStock",
+                      "vTechStockPhaseOut", "vTechAOut"),
+        merge = TRUE, drop.zeros = FALSE) |>
+  mutate(series = ifelse(is.na(comm), name, paste0(name, "[", comm, "]"))) |>
+  select(series, year, value) |>
+  mutate(value = round(value, 4)) |>
+  pivot_wider(names_from = year, values_from = value, values_fill = 0) |>
+  arrange(series)
+```
+
+95 MW sits idle for two decades because nobody is allowed to close it, and the
+only scrap is the schedule's own: `8 × 120 = 960` t/yr in 2033 and 2038.
+
+Now the run with retirement **on** — same repository, same declining schedule:
+
+```{r}
+s6b <- interpolate_model(mod_ON, name = "lc_scrap_on") |>
+  solve_scenario(echo = FALSE)
+getData(s6b, "vObjective", merge = TRUE)$value
+
+getData(s6b, name = c("vTechCap", "vTechStockCap", "vTechRetiredStock",
+                      "vTechStockPhaseOut", "vTechAOut"),
+        merge = TRUE, drop.zeros = FALSE) |>
+  mutate(series = ifelse(is.na(comm), name, paste0(name, "[", comm, "]"))) |>
+  select(series, year, value) |>
+  mutate(value = round(value, 4)) |>
+  pivot_wider(names_from = year, values_from = value, values_fill = 0) |>
+  arrange(series)
+```
+
+The cost falls from **12,477.8 to 1,651.1**, and both mechanisms are visible at
+once:
+
+- **95 MW retired in 2020** → `95 × 200 = 19,000` t of *intact* scrap;
+- the schedule still thins the 5 MW that remain → `0.4 × 120 = 48` t/yr of
+  *worn-out* scrap in 2033 and 2038, and 24 in 2043.
+
+The schedule was honoured **and** the optimiser was free to act. Neither
+overrides the other: `vTechStockPhaseOut` thins whatever is actually standing,
+*after* early retirement.
+
+::: {.callout-note appearance="simple"}
+**This did not always work.** Until energyRt 0.85 a declining `stock` silently
+disabled early retirement: the retirement limit was read against a schedule that
+reached zero, and a zero in the final year pinned cumulative retirement to zero
+in *every* year. The model still solved — it just refused to retire anything, and
+said nothing about it. If you are reading an older study whose fleet was declared
+with a falling `stock` and `optimizeRetirement = TRUE`, check whether anything
+actually retired.
+:::
+
+For contrast, the same model on a **constant** fleet — swap the technology's
+schedule with `update()` and `add()`:
+
+```{r}
+CONST <- data.frame(year = c(2020L, 2043L), stock = c(100, 100))
+
+s6c <- add(mod_ON, update(WIND_S, capacity = CONST), overwrite = TRUE) |>
+  interpolate_model(name = "lc_scrap_const") |>
+  solve_scenario(echo = FALSE)
+getData(s6c, "vObjective", merge = TRUE)$value
+```
+
+**1,040.0** — cheaper still, because nothing is left to phase out and the 5 MW
+survivor never has to be replaced.
+
+**Exercises.**
+
+**6.5a** Set `ret2aout` equal to `pho2aout` (120). What happens to the objective,
+and what does that tell you about how much of the saving was the *credit* rather
+than the avoided `fixom`?
+
+**6.5b** Attach `newExport("SCRAP", export = data.frame(price = ...))` so recovery
+actually pays. At what price does the model retire the fleet *for the scrap
+value alone* — that is, with `fixom = 0`?
+
+**6.5c** Predict the objective for the declining fleet with retirement on, before
+running: 95 MW × 8/yr avoided, over how many years? Reconcile your figure with
+1,651.1.
+
+## 6.6 — Closing the loop {#sec-lca-recycling}
+
+*Learning goal:* one commodity produced by end-of-life and consumed by
+construction — a material loop written with the coefficients you already have.
+
+`STEEL` is now both: `ncap2ainp = 150` (needed to build) and `pho2aout = 120`
+(recovered when scrapped). Primary steel costs 100; recovered steel is free.
+The base technology has no recovery; its recycling twin adds one coefficient:
+
+```{r}
+SSTEEL100 <- newSupply(name = "SSTEEL", commodity = "STEEL",
+                       supply = data.frame(cost = 100))
+
+WIND_R <- newTechnology(
+  name = "WIND",
+  input = list(comm = "WND"), output = list(comm = "ELC"), cap2act = 1,
+  afs = data.frame(afs.up = 1), vintage = data.frame(olife = 15L),
+  invcost = data.frame(invcost = 1),
+  aux  = data.frame(acomm = "STEEL", unit = "t"),
+  aeff = data.frame(acomm = "STEEL", ncap2ainp = 150))
+
+WIND_RC <- update(WIND_R,
+  aeff = data.frame(acomm = "STEEL", ncap2ainp = 150, pho2aout = 120))
+
+DEMR <- newDemand(name = "DEM", commodity = "ELC",
+                  demand = data.frame(year = YRS,
+                                      demand = c(10, 20, 30, 40, 50, 60)))
+
+repo_REC <- newRepository("repo_REC", WND, ELC, STEEL,
+                          SWND, SSTEEL100, WIND_R, DEMR)
+
+mod_REC <- newModel(name = "LC_REC", data = repo_REC, region = "R1",
+                    horizon = hor, discount = 0, calendar = cal)
+
+s7a <- interpolate_model(mod_REC, name = "lc_rec_off") |>
+  solve_scenario(echo = FALSE)
+s7b <- add(mod_REC, WIND_RC, overwrite = TRUE) |>
+  interpolate_model(name = "lc_rec_on") |>
+  solve_scenario(echo = FALSE)
+
+getData(list(no_recycling = s7a, recycling = s7b),
+        name = "vObjective", merge = TRUE) |>
+  select(scenario, objective = value)
+```
+
+```{r}
+getData(s7b, name = c("vTechNewCap", "vTechAInp", "vTechAOut", "vSupOut"),
+        merge = TRUE, drop.zeros = FALSE) |>
+  filter(is.na(comm) | comm == "STEEL") |>
+  mutate(series = ifelse(is.na(comm), name, paste0(name, "[", comm, "]"))) |>
+  select(series, year, value) |>
+  mutate(value = round(value, 4)) |>
+  pivot_wider(names_from = year, values_from = value, values_fill = 0) |>
+  arrange(series)
+```
+
+The build programme is **identical** in both runs — same `vTechNewCap`, same
+`vTechAInp[STEEL]`. What changes is where the steel comes from. From 2038 the
+retiring fleet returns 480 t/yr and purchases of primary steel fall from 900 to
+420; in 2043, 240 returns and purchases fall from 600 to 360.
+
+The saving is **360,000**, and checking it is a rate lesson in itself: 480 + 240
+= 720 t/yr displaced, but each of those milestones stands for **five years**, so
+3,600 t × 100 = 360,000. Read the columns as totals and you would be off by a
+factor of five.
+
+**Exercises.**
+
+**6.6a** Add a recycling *loss*: only 80% of recovered steel is usable. (Hint: it
+is a coefficient, not a new process.) How much of the saving survives?
+
+**6.6b** Make recovered steel worth something even when unused, with an export.
+Does the build programme change now?
+
+**6.6c** The loop here is within one technology. Route the scrap into a *second*
+technology's `ncap2ainp` instead, and confirm the totals still balance.
+
+## 6.7 — The trap: a one-time coefficient on a fine calendar {#sec-lca-slices}
+
+*Learning goal:* the single most expensive mistake in this chapter.
+
+An aux coefficient given **without a `timeslice`** applies in **every timeslice**.
+For a rate — fuel per hour, emissions per MWh — that is exactly right. For a
+*one-time* quantity it is a disaster, and the disaster scales with your calendar.
+
+The same model, the same `pho2aout = 120`, on calendars of 1, 4 and 12 slices —
+three explicit builds, because the calendar (and with it every commodity's
+`timeframe`) is what changes:
+
+```{r}
+cal4 <- newCalendar(timetable = make_timetable(
+  struct = list(ANNUAL = "ANNUAL", SEASON = sprintf("s%02d", 1:4))),
+  name = "c4")
+cal12 <- newCalendar(timetable = make_timetable(
+  struct = list(ANNUAL = "ANNUAL", SEASON = sprintf("s%02d", 1:12))),
+  name = "c12")
+
+WIND_T1 <- newTechnology(
+  name = "WIND",
+  input = list(comm = "WND"), output = list(comm = "ELC"), cap2act = 1,
+  afs = data.frame(afs.up = 1), capacity = FLEET,
+  vintage = data.frame(olife = 40L),
+  aux  = data.frame(acomm = "SCRAP", unit = "t"),
+  # no `timeslice` column: the coefficient lands in EVERY slice
+  aeff = data.frame(acomm = "SCRAP", pho2aout = 120))
+
+repo_SL1 <- newRepository("repo_SL1", WND, ELC, SCRAP, SWND, WIND_T1, DEM)
+s_sl1 <- newModel(name = "LC_SLICE", data = repo_SL1, region = "R1",
+                  horizon = hor, discount = 0, calendar = cal) |>
+  interpolate_model(name = "lc_slice1") |> solve_scenario(echo = FALSE)
+
+WND_s  <- newCommodity(name = "WND",   timeframe = "SEASON")
+ELC_s  <- newCommodity(name = "ELC",   timeframe = "SEASON")
+SCRAP_s <- newCommodity(name = "SCRAP", timeframe = "SEASON")
+repo_SLs <- newRepository("repo_SLs", WND_s, ELC_s, SCRAP_s,
+                          SWND, WIND_T1, DEM)
+s_sl4 <- newModel(name = "LC_SLICE", data = repo_SLs, region = "R1",
+                  horizon = hor, discount = 0, calendar = cal4) |>
+  interpolate_model(name = "lc_slice4") |> solve_scenario(echo = FALSE)
+s_sl12 <- newModel(name = "LC_SLICE", data = repo_SLs, region = "R1",
+                   horizon = hor, discount = 0, calendar = cal12) |>
+  interpolate_model(name = "lc_slice12") |> solve_scenario(echo = FALSE)
+
+getData(list(`1` = s_sl1, `4` = s_sl4, `12` = s_sl12),
+        name = "vTechAOut", merge = TRUE) |>
+  filter(comm == "SCRAP") |>
+  group_by(timeslices = scenario) |>
+  summarise(total_SCRAP = sum(value), .groups = "drop")
+```
+
+**Exactly linear in the slice count.** The same fleet, the same coefficient, and
+an answer that is 12× too large — with no warning, no error, and a model that
+solves in the usual time. On the 8,760-slice calendar of @sec-realmodel this
+figure would read **21 million tonnes**.
+
+::: {.callout-warning appearance="simple"}
+**Rule of thumb.** If the quantity is *per unit of something that happens in a
+timeslice* (per MWh, per hour of activity), leave `timeslice` unset. If it is
+*per unit of capacity* — built, standing, phased out or retired — name the
+timeslice explicitly, or divide by the slice count and know that you have.
+:::
+
+This is not a quirk of the end-of-life coefficients. `ncap2ainp` behaves
+identically and always has. It is simply easier to notice when the number is a
+tonnage of steel than when it is a fraction.
+
+**Exercises.**
+
+**6.7a** Fix the model: add `timeslice = "ANNUAL"` to the `aeff` row and confirm
+all three calendars now agree at 2,400.
+
+**6.7b** Which of the eight `<driver>2a<inp|out>` coefficients are exposed to this
+trap, and which are not? Justify each from its driver.
+
+**6.7c** Write a check you could run over any model — a function that flags
+capacity-driven aux coefficients with an unset `timeslice`.
+
+## Where this connects
+
+- @sec-processes introduced aux flows as "anything riding alongside the
+  conversion". This chapter is that idea taken to the ends of the plant's life.
+- @sec-realmodel's retirement exercise found that `optimizeRetirement = TRUE`
+  changed nothing, and correctly reported it. §6.5 shows the opposite case — and
+  the version of the defect that would have made "nothing retired" a *lie*.
+- @sec-replication's converted PyPSA-Eur model carries no life-cycle data at all.
+  Adding land, materials and end-of-life to it is a genuine open exercise, and a
+  good one.
+
+**Takeaways**
+
+- **The driver is the physics.** `cap2a*` is a plateau, `ncap2a*` a pulse at
+  build, `pho2a*` and `ret2a*` a pulse at the end. Choose by *when the thing
+  happens*, not by which coefficient you used last time.
+- **`stock` is what is still standing**, and energyRt derives a commissioning
+  stream and a survival share from it. Both are reported; look at them.
+- **A schedule and an optimiser can coexist.** Phase-out thins what remains after
+  retirement; declaring a decommissioning timetable does not take the decision
+  away.
+- **Everything is a per-year rate.** Multiply by the period length before you
+  total anything, and always test a period of a different length.
+- **Duals are not exported — difference two solves.** Agreement between a small
+  step and a large one is what tells you the price is real.
+- **An unset `timeslice` means every timeslice.** For a one-time quantity that is
+  a silent multiplication by the size of your calendar.

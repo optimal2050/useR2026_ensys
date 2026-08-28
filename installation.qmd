@@ -76,21 +76,25 @@ never runs `sudo` itself) — run that, then re-run `install_energyRt()`.
 
 For the training, install the **development** version with
 `install_energyRt(branch = "dev")`: it carries the features the exercises rely on.
-The exercises require **energyRt ≥ 0.85** — the top of each chapter runs
+The exercises require **energyRt ≥ 0.88** — the top of each chapter runs
 `source("R/workshop-model.R")`, which checks your installed version and warns,
 before any exercise runs, if it is too old.
 
-0.85 is not an arbitrary floor. Several chapters use things that arrived in it:
+The floor is not arbitrary. The chapters depend on:
 
 -   the **three-role storage** — `@input`, `@storage` and `@output` may each name
     a different commodity, which is what lets a vehicle be one object in
     @sec-ev rather than a storage plus two technologies;
 -   **`storage_duration()`**, which splits a storage level into how long the
     energy actually sits there;
--   a storage capacity read as a **rate** (`cap2act`), so `cap.up = 7` means
-    7 kW on any calendar;
+-   a storage capacity read as a **rate** (`cap2act`), so `inp.cap.up = 7`
+    means 7 kW on any calendar;
 -   `draw()` and `autoplot()` fixes for converted models that span many regions,
-    used throughout @sec-realmodel and @sec-replication.
+    used throughout @sec-realmodel and @sec-replication;
+-   the **`calendars`** catalog, whose sampled calendars @sec-realmodel
+    interpolates against instead of building a timetable by hand;
+-   **`solve_myopic()`**, which @sec-usensys uses to step a model to 2050 one
+    milestone at a time.
 
 Once it finishes, verify your setup in a fresh session:
 
@@ -138,11 +142,13 @@ itself quick and reliable, and avoids the Linux error
 deps <- c(
   "generics", "data.table", "DBI", "RSQLite", "tibble", "tidyr", "dplyr",
   "rlang", "stringr", "lubridate", "purrr", "arrow", "progressr", "tictoc",
-  "cli", "zoo", "registry", "options", "glue", "plyr",
+  "cli", "zoo", "options", "glue", "plyr", "yaml",
   # suggested -- plots and reports (optional but recommended):
   "ggplot2", "patchwork", "knitr", "rmarkdown", "tinytex", "sf",
   # optional -- the process-designer GUI (process_designer()):
   "shiny", "DT",
+  # optional -- detailed per-parameter diffs in compare_inputs():
+  "waldo",
   # optional -- remote solving on NEOS (see the NEOS section below):
   "httr2", "xml2", "base64enc"
 )
@@ -184,21 +190,59 @@ pak::pkg_install("optimal2050/energyRt@dev")
 ```
 
 ::: {.callout-note collapse="true"}
-## `geoscales` — optional, and not published yet
+## `geoscales` & `timescales` — the optional stack companions
 
-[`geoscales`](https://github.com/optimal2050/geoscales) is the spatial
-companion in the same stack: nested sets of regions, conversion between
-spatial resolutions, and maps of results. energyRt lists it as a *suggested*
-package and works fully without it — nothing in this training needs it.
+[`geoscales`](https://github.com/optimal2050/geoscales) (nested region sets,
+conversion between spatial resolutions, maps of results) and
+[`timescales`](https://github.com/optimal2050/timescales) (the calendar
+catalog and time-resolution conversion) are the spatial and temporal
+companions in the same stack. energyRt lists both as *suggested* packages
+(`>= 0.5.0`) and works fully without them — the core exercises need neither,
+but the map figures use `geoscales`, and the Session 3 model (below) pulls it
+in automatically.
 
-It is not on CRAN and is still pre-release, so leave it out for now. Once it is
-published you will be able to install it with:
+`geoscales` is pre-CRAN but public — install it from GitHub when you want it:
 
 ```r
-# not yet available -- do not run
-# pak::pkg_install("optimal2050/geoscales")
+pak::pkg_install("optimal2050/geoscales")
 ```
+
+`timescales` is not yet public; nothing in this training needs it, and
+energyRt ships the course calendars (`calendars`) without it.
 :::
+
+## `reneuro` — the European models
+
+Chapters [@sec-realmodel] and [@sec-replication] use European models converted
+from PyPSA-Eur and shipped, ready to solve, in the
+[`reneuro`](https://optimal2050.github.io/reneuro/) package (~80 MB — the
+download is almost entirely model data):
+
+```r
+pak::pkg_install("optimal2050/reneuro")
+```
+
+No Python, no netCDF and no PyPSA-Eur clone are involved: the conversion has
+already happened and the models are ordinary R objects, lazy-loaded so they cost
+nothing until touched. `reneuro::pypsa_eur_5` (5 Belgian nodes, one week) solves
+on GLPK in about ten seconds; `pypsa_eur_41` (41 European nodes, full year)
+needs a sampled calendar and Julia/HiGHS.
+
+## `US26MIP` — the Session 3 case-study model
+
+The [@sec-usensys] chapter works with USENSYS, a 26-zone United States
+electricity model shipped **prebuilt** inside the
+[`US26MIP`](https://github.com/usensys/US26MIP) package (~100 MB — the
+download includes the full model with hourly data):
+
+```r
+pak::pkg_install("usensys/US26MIP")
+```
+
+It declares **energyRt ≥ 0.87.9**, which the course floor above already
+exceeds — and pulls its spatial companion
+(`geoscales`, for the zone maps) automatically. You do not need it before
+Session 3.
 
 ## Check what you already have
 

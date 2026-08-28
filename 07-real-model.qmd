@@ -15,11 +15,13 @@ Solve it. Measure it. Shrink it. Sample it. Stretch it to 2050. Let it retire it
 own plant. Price its carbon, then cap it. Double its demand and check the answer
 against PyPSA.
 
-Two smaller and larger variants of the same conversion ship alongside it, and
-@sec-choose shows how to swap them in.
+Smaller and larger models of the same European system come from the
+[reneuro](https://optimal2050.github.io/reneuro/) package; @sec-choose shows
+how to swap them in.
 
 ```{r}
 library(energyRt)
+library(reneuro)
 library(dplyr)
 library(ggplot2)
 ```
@@ -67,8 +69,8 @@ fuel, so `SUP_GAS` costs 0 and the price sits in each technology's `varom`.
 Carbon, though, rides on the *commodity*:
 
 ```{r}
-emitters <- Filter(function(x) NROW(x@emis), getObject(cp, class = "commodity"))
-lapply(emitters, function(x) cbind(comm = x@name, x@emis))
+scen <- interpolate_model(cp, name = "be_cp")   # the scenario 7.1 solves
+getData(scen, "pEmissionFactor", merge = TRUE)
 ```
 
 `GAS` emits 0.198 t CO₂ per unit, `OIL` and `WST` 0.2571. That is what @sec-tax
@@ -76,19 +78,27 @@ and @sec-cap act on.
 
 ## Choosing a model {#sec-choose}
 
-Three converted models ship with the course. They are the *same* conversion at
-three sizes, so anything you write for one runs on the others.
+The copperplate above ships with the course. Larger models of the same European
+system come from **reneuro**, which packages PyPSA-Eur conversions as ordinary R
+data — no Python, no netCDF, no clone:
 
-| file | regions | timeslices | on disk |
-|---|---:|---:|---:|
-| `belgium_copperplate.rds` | 1 | 8,760 | 0.28 MB |
-| `belgium_model.rds` | 5 | 168 | 0.02 MB |
-| `eu41_model.rds` | 41 | 8,760 | 12.7 MB |
+| object | source | regions | timeslices |
+|---|---|---:|---:|
+| `belgium_copperplate.rds` | course `data/` | 1 | 8,760 |
+| `reneuro::pypsa_eur_5` | package | 5 | 168 |
+| `reneuro::pypsa_eur_41` | package | 41 | 8,760 |
 
 ```{r}
-be5 <- readRDS("data/belgium_model.rds")     # 5 Belgian nodes, one week
-eu  <- readRDS("data/eu41_model.rds")        # 41 European nodes, full year
-summary(eu@data[[1]])
+be5 <- pypsa_eur_5      # 5 Belgian nodes, one week
+eu  <- pypsa_eur_41     # 41 European nodes, full year
+summary(eu)
+```
+
+They are lazy-loaded, so they cost nothing until touched, and each records where
+it came from:
+
+```{r}
+str(attr(eu, "reneuro_provenance")[c("describe", "commit", "source")])
 ```
 
 Swapping the model changes what the chapter costs to run:
@@ -97,8 +107,31 @@ Swapping the model changes what the chapter costs to run:
 |---|---:|---|
 | copperplate, full year | ~473,000 | ~4½ minutes |
 | copperplate, sampled (below) | ~15,600 | ~20 seconds |
-| 5-node Belgium, one week | ~40,000 | ~25 seconds |
-| 41-node Europe, full year | ~28 **million** | no open solver will take it |
+| `pypsa_eur_5`, one week | ~36,900 | ~11 seconds (GLPK) |
+| `pypsa_eur_41`, full year | ~28 **million** | no open solver will take it |
+
+`pypsa_eur_5` also ships already solved, as `be_solved`, so its results can be
+read without a solver installed.
+
+**7.0 — What does the network cost?** `pypsa_eur_5cp` is `pypsa_eur_5` with the
+same corridors made unbounded and lossless. Solve both and compare. Predict the
+sign of the difference before you run it, and say why it must hold.
+
+::: {.callout-tip collapse="true" title="Solution 7.0"}
+```{r}
+both <- list(
+  metered = read_solution(solve_scen(interpolate_model(pypsa_eur_5,   name = "be5"))),
+  copper  = read_solution(solve_scen(interpolate_model(pypsa_eur_5cp, name = "be5cp"))))
+
+getData(both, "vObjective", merge = TRUE)
+```
+
+A copperplate can move power anywhere for free, so it can do anything the
+bounded network can and more: its objective is a **floor**. Any bounded version
+of the same system costs at least as much. That makes it the reference point for
+what the network representation is worth — the gap is what the transmission
+constraints cost, and nothing else.
+:::
 
 Two pieces of advice if you go to the European model:
 
@@ -112,14 +145,14 @@ Two pieces of advice if you go to the European model:
 solved before. It is cheap, and it tells you whether the next command takes a
 second or an afternoon.
 
-## 6.1 — Solve it {#sec-solve}
+## 7.1 — Solve it {#sec-solve}
 
-**6.1 — Interpolate and solve.** Turn the model into a scenario, solve it, and
+**7.1 — Interpolate and solve.** Turn the model into a scenario, solve it, and
 report the objective.
 
-::: {.callout-tip collapse="true" title="Solution 6.1"}
+::: {.callout-tip collapse="true" title="Solution 7.1"}
 ```{r}
-scen <- interpolate_model(cp, name = "be_cp")
+scen <- interpolate_model(cp, name = "be_cp")   # built in @sec-be-data
 sol  <- solve_scen(scen, solver = solver_options$julia_highs)
 
 getData(sol, "vObjective", merge = TRUE)
@@ -143,15 +176,15 @@ Two habits worth forming now. **Name your scenarios** — the name is what
 the parameters you will want when a result surprises you.
 :::
 
-## 6.2 — How big is it? {#sec-size}
+## 7.2 — How big is it? {#sec-size}
 
 Before shrinking anything, measure it. `model_size()` estimates variables and
 constraints from the gating maps and lists the heaviest parameters.
 
-**6.2 — Measure the model.** Report variables and constraints, and identify the
+**7.2 — Measure the model.** Report variables and constraints, and identify the
 parameters holding the most rows. Explain what they have in common.
 
-::: {.callout-tip collapse="true" title="Solution 6.2"}
+::: {.callout-tip collapse="true" title="Solution 7.2"}
 ```{r}
 model_size(scen)
 ```
@@ -176,7 +209,7 @@ year is resolved hourly. This is why the temporal and regional resolution
 decisions of @sec-time and @sec-regions are the expensive ones.
 :::
 
-## 6.3 — Shrink it: sparse, prune, fold, trim {#sec-shrink}
+## 7.3 — Shrink it: sparse, prune, fold, trim {#sec-shrink}
 
 `interpolate_model()` has three storage knobs, plus one step you apply afterwards:
 
@@ -189,42 +222,44 @@ decisions of @sec-time and @sec-regions are the expensive ones.
 
 None of them changes the solution. All change how much data you carry.
 
-**6.3 — Measure each step.** Interpolate with every knob off, switch them on one
+**7.3 — Measure each step.** Interpolate with every knob off, switch them on one
 at a time, and record parameter rows. Determine which knob pays here and which
 does nothing — and why that is informative rather than disappointing.
 
-::: {.callout-tip collapse="true" title="Solution 6.3"}
-```{r}
-rows <- function(sc) sum(vapply(sc@modInp@parameters,
-  function(p) if (is.null(p)) 0L else NROW(p@data), integer(1)))
+::: {.callout-tip collapse="true" title="Solution 7.3"}
+Build one scenario per setting and measure each with `model_size()` — which
+reports the rows of the *value* parameters, the data the solver actually
+consumes — and `size()`, energyRt's object-size helper:
 
+```{r}
 raw <- interpolate_model(cp, name = "raw", sparse = FALSE, prune = FALSE, fold = FALSE)
 sp  <- interpolate_model(cp, name = "sp",  sparse = TRUE,  prune = FALSE, fold = FALSE)
 pr  <- interpolate_model(cp, name = "pr",  sparse = TRUE,  prune = TRUE,  fold = FALSE)
 fd  <- interpolate_model(cp, name = "fd",  sparse = TRUE,  prune = TRUE,  fold = TRUE)
 tr  <- trim_parameters_by_maps(pr)
 
-data.frame(
-  step = c("raw", "+sparse", "+prune", "+fold", "+trim"),
-  rows = vapply(list(raw, sp, pr, fd, tr), rows, integer(1)),
-  size = vapply(list(raw, sp, pr, fd, tr),
-                function(x) format(object.size(x), units = "MB"), character(1))
-)
+model_size(raw)$param_rows
+model_size(sp)$param_rows
+model_size(fd)$param_rows
+
+size(raw)
+size(fd)
 ```
 
 A local run gives:
 
-| step | parameter rows | size |
+| step | `param_rows` | `size()` |
 |---|---:|---:|
-| raw | 1,942,567 | 116.4 MB |
-| +sparse | 1,536,711 | 97.4 MB |
-| +prune | 1,536,711 | 97.4 MB |
-| +fold | 1,308,977 | 84.5 MB |
-| +trim | 1,536,711 | 97.4 MB |
+| raw | 692,506 | 116.4 Mb |
+| +sparse | 286,655 | 97.4 Mb |
+| +prune | 286,655 | 97.4 Mb |
+| +fold | **58,921** | 84.5 Mb |
+| +trim | 286,655 | 97.4 Mb |
 
-`sparse` pays: it strips 405,856 rows that merely restated a default. `fold` pays
-again, collapsing a further 227,734. **`prune` and `trim` remove nothing at all**
-— and that is the interesting result, not a failure.
+`sparse` pays: it strips 405,851 rows that merely restated a default. `fold` pays
+far more — 286,655 down to **58,921**, a 79% cut — because a whole column of a
+uniform dimension collapses to one `NA` wildcard. **`prune` and `trim` remove
+nothing at all**, and that is the interesting result, not a failure.
 
 Both exist to catch rows the equations never ask for. Removing nothing means the
 mapping layer already built these parameters over exactly their equation domains.
@@ -277,35 +312,37 @@ Note also what the weighting now does: `pTimesliceWeight` is 30.42, so the 288
 modelled hours stand in for 8,760. The objective is again annual, but by
 *scaling* rather than by counting.
 
-## 6.4 — Different back-ends {#sec-backends}
+## 7.4 — Different back-ends {#sec-backends}
 
 energyRt writes the same model for several solvers, generating the algebra from
 one specification per back-end. **The objective must agree.** A real
 disagreement is a bug in a template, not a matter of solver taste.
 
-**6.4 — Solve the same scenario on several back-ends.** Compare objectives and
+**7.4 — Solve the same scenario on several back-ends.** Compare objectives and
 wall-clock time. Determine what you would conclude from a disagreement in the
 tenth digit, and what from one in the third.
 
-::: {.callout-tip collapse="true" title="Solution 6.4"}
+::: {.callout-tip collapse="true" title="Solution 7.4"}
 ```{r}
 names(solver_options)   # what is available
 
-backends <- c("glpk", "julia_highs", "pyomo_glpk", "pyomo_cbc")
+back_ends <- c(glpk = "glpk", julia_highs = "julia_highs",
+               pyomo_glpk = "pyomo_glpk", pyomo_cbc = "pyomo_cbc")
 
-bench <- lapply(backends, function(b) {
-  t0 <- Sys.time()
-  s  <- try(solve_scen(scen_s, name = paste0("be_", b), solver = solver_options[[b]]),
-            silent = TRUE)
-  data.frame(
-    backend   = b,
-    seconds   = round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 1),
-    objective = if (inherits(s, "try-error")) NA_real_
-                else getData(s, "vObjective", merge = TRUE)$value[1]
-  )
-}) |> bind_rows()
+# try() so a back-end you have not installed reports and the rest still run
+sols <- lapply(names(back_ends), function(nm) {
+  try(solve_scen(scen_s, name = paste0("be_", nm),
+                 solver = solver_options[[back_ends[[nm]]]]), silent = TRUE)
+})
+names(sols) <- names(back_ends)
+sols <- sols[!vapply(sols, inherits, TRUE, "try-error")]
+```
 
-bench
+`getData()` accepts a **list of scenarios** and stacks them, using the list names
+as the `scenario` column — so comparing solutions needs no assembly of your own:
+
+```{r}
+getData(sols, "vObjective", merge = TRUE)
 ```
 
 On the sampled scenario:
@@ -341,19 +378,20 @@ it is something to measure. And the corollary matters more: a back-end that is
 fine for a teaching model can be hopeless two orders of magnitude up.
 
 You need each back-end installed; one you do not have raises an error, which is
-why the loop wraps `try()`. See the **Installation** chapter.
+why the loop wraps `try()` and drops what failed. See the **Installation**
+chapter.
 :::
 
-## 6.5 — A planning horizon to 2050 {#sec-horizon}
+## 7.5 — A planning horizon to 2050 {#sec-horizon}
 
 The model has one milestone year. Planning studies want a path: when capacity is
 built, when it retires, what the system looks like in between.
 
-**6.5 — Extend the horizon.** Solve over 2025–2050 in five-year steps on the
+**7.5 — Extend the horizon.** Solve over 2025–2050 in five-year steps on the
 sampled calendar. Report the model size, plot the capacity path — and then look
 hard at what it built.
 
-::: {.callout-tip collapse="true" title="Solution 6.5"}
+::: {.callout-tip collapse="true" title="Solution 7.5"}
 ```{r}
 hor <- newHorizon(2025:2050, intervals = c(1, 5, 5, 5, 5, 5))
 hor@intervals
@@ -381,11 +419,11 @@ biomass 10,999, onwind 7,067, offwind-dc 6,018. Total CO₂: **zero**.
 Now stop and check that, because it is wrong.
 :::
 
-**6.5b — Something is off. Find it.** The base model has **113 MW** of biomass
+**7.5b — Something is off. Find it.** The base model has **113 MW** of biomass
 and PyPSA marks it non-extendable. The 2048 solution has **10,999 MW**. Work out
 why, and fix it.
 
-::: {.callout-tip collapse="true" title="Solution 6.5b"}
+::: {.callout-tip collapse="true" title="Solution 7.5b"}
 ```{r}
 bio <- getObject(cp, name = "E_BIOMASS")[[1]]
 bio@capacity     # stock 113, cap.up NA, year 2050
@@ -405,18 +443,23 @@ describes a single year, 2050.**
 So extending the horizon silently unlocked plant that PyPSA holds fixed. Fixing
 it needs the bound *and* a wildcard year:
 
+Three technologies carry a closed investment window — `E_BIOMASS`, `E_WASTE` and
+`E_OIL`, the ones PyPSA holds fixed. Cap each at its own stock, and wildcard the
+year so the bound applies in every milestone:
+
 ```{r}
+objs <- getObject(cp)
+
+objs[["E_BIOMASS"]]@capacity$cap.up <- 113.0
+objs[["E_WASTE"]]@capacity$cap.up   <- 293.8
+objs[["E_OIL"]]@capacity$cap.up     <- 130.2
+
+objs[["E_BIOMASS"]]@capacity$year <- NA_integer_   # NA = every year, not just 2050
+objs[["E_WASTE"]]@capacity$year   <- NA_integer_
+objs[["E_OIL"]]@capacity$year     <- NA_integer_
+
 cp_fix <- cp
-r <- cp_fix@data[[1]]
-for (i in seq_along(r@data)) {
-  o <- r@data[[i]]
-  if (!is(o, "technology") || !NROW(o@vintage) || is.na(o@vintage$end[1])) next
-  st <- o@capacity$stock[1]; if (is.na(st)) next
-  o@capacity$cap.up <- st
-  o@capacity$year   <- NA_integer_     # NA = every year, not just 2050
-  r@data[[i]] <- o
-}
-cp_fix@data[[1]] <- r
+cp_fix@data[[1]] <- do.call(newRepository, c(list(name = "be_fix"), unname(objs)))
 
 sol_fix <- solve_scen(interpolate_model(cp_fix, cal, hor, name = "be_fix"),
                       solver = solver_options$julia_highs)
@@ -443,16 +486,16 @@ Two lessons, and the second is the general one:
   the kind of thing to notice.
 :::
 
-## 6.6 — Endogenous retirement {#sec-retire}
+## 7.6 — Endogenous retirement {#sec-retire}
 
 By default a plant lives out its technical life. With `optimizeRetirement` the
 model may retire it early, when paying fixed costs is worse than losing it.
 
-**6.6 — Let the model retire plant.** Solve the 2050 horizon with
+**7.6 — Let the model retire plant.** Solve the 2050 horizon with
 `optimizeRetirement = TRUE`. Before running it, predict the direction the
 objective must move — then check.
 
-::: {.callout-tip collapse="true" title="Solution 6.6"}
+::: {.callout-tip collapse="true" title="Solution 7.6"}
 ```{r}
 cp_ret <- cp
 cp_ret@config@optimizeRetirement <- TRUE
@@ -473,7 +516,7 @@ changed too.)
 
 Here it stayed exactly equal, which means the option was **worthless on this
 model**. That is a result, and the right thing to do is report it — not tune
-parameters until something retires. It makes sense once you look at 6.5: the
+parameters until something retires. It makes sense once you look at 7.5: the
 fossil fleet is already sitting idle, and an idle plant with no fixed cost worth
 avoiding has no reason to be scrapped.
 
@@ -482,28 +525,45 @@ carries the retirement data and mappings, but the equations are not in the
 back-ends, so a storage will not retire early whatever you set.
 :::
 
-## 6.7 — A carbon tax {#sec-tax}
+## 7.7 — A carbon tax {#sec-tax}
 
 A tax fixes the **price** of carbon and lets the quantity float. Back to the
 single-period scenario, where the fleet still burns fuel.
 
-**6.7 — Price the carbon.** Sweep a range of carbon prices and plot emissions
+**7.7 — Price the carbon.** Sweep a range of carbon prices and plot emissions
 against price. Determine whether the response is smooth.
 
-::: {.callout-tip collapse="true" title="Solution 6.7"}
-```{r}
-tax_run <- function(level) {
-  TAX <- newTax(name = "CT_CO2", comm = "CO2",
-                tax = data.frame(year = 2050, bal = level))
-  s <- interpolate_model(cp, cal, TAX, name = paste0("tax", level))
-  o <- solve_scen(s, solver = solver_options$julia_highs)
-  data.frame(tax = level,
-             objective = getData(o, "vObjective", merge = TRUE)$value[1],
-             co2 = sum(getData(o, "vEmsFuelTot", merge = TRUE)$value))
-}
+::: {.callout-tip collapse="true" title="Solution 7.7"}
+A `tax` is an object like any other, and `interpolate_model()` takes it through
+`...` — the same way @sec-cap will pass a constraint. One scenario per price:
 
-sweep_tax <- bind_rows(lapply(c(0, 10, 30, 60, 120), tax_run))
-sweep_tax
+```{r}
+tax10  <- newTax(name = "CT_CO2", comm = "CO2", tax = data.frame(year = 2050, bal = 10))
+tax30  <- newTax(name = "CT_CO2", comm = "CO2", tax = data.frame(year = 2050, bal = 30))
+tax60  <- newTax(name = "CT_CO2", comm = "CO2", tax = data.frame(year = 2050, bal = 60))
+tax120 <- newTax(name = "CT_CO2", comm = "CO2", tax = data.frame(year = 2050, bal = 120))
+
+sol_t10  <- solve_scen(interpolate_model(cp, cal, tax10,  name = "t10"),
+                       solver = solver_options$julia_highs)
+sol_t30  <- solve_scen(interpolate_model(cp, cal, tax30,  name = "t30"),
+                       solver = solver_options$julia_highs)
+sol_t60  <- solve_scen(interpolate_model(cp, cal, tax60,  name = "t60"),
+                       solver = solver_options$julia_highs)
+sol_t120 <- solve_scen(interpolate_model(cp, cal, tax120, name = "t120"),
+                       solver = solver_options$julia_highs)
+```
+
+Then read all five at once:
+
+```{r}
+taxes <- list(`0` = sol_s, `10` = sol_t10, `30` = sol_t30,
+              `60` = sol_t60, `120` = sol_t120)
+
+getData(taxes, "vObjective", merge = TRUE)
+
+getData(taxes, "vEmsFuelTot", merge = TRUE) |>
+  group_by(scenario) |>
+  summarise(co2 = sum(value), .groups = "drop")
 ```
 
 | tax | objective | CO₂ | abated |
@@ -530,33 +590,58 @@ the tax or shuts the system down — and both look like plausible model behaviou
 which is what makes unit errors here so dangerous.
 :::
 
-## 6.8 — A carbon cap {#sec-cap}
+## 7.8 — A carbon cap {#sec-cap}
 
 A cap fixes the **quantity** and lets the price float — the mirror image.
 
-**6.8 — Cap the carbon.** Constrain CO₂ to fractions of the unconstrained level
+**7.8 — Cap the carbon.** Constrain CO₂ to fractions of the unconstrained level
 and compare the cost of each. Determine the shape of the resulting curve.
 
-::: {.callout-tip collapse="true" title="Solution 6.8"}
+::: {.callout-tip collapse="true" title="Solution 7.8"}
 ```{r}
 base_co2 <- sum(getData(sol_s, "vEmsFuelTot", merge = TRUE)$value)   # 380,814
+```
 
-cap_run <- function(frac) {
-  CAP <- newConstraint(
-    name = "CO2_CAP", eq = "<=",
-    for.each = data.frame(year = 2050, comm = "CO2"),
-    term1    = list(variable = "vEmsFuelTot"),
-    rhs      = data.frame(year = 2050, rhs = frac * base_co2),
-    defVal   = Inf)
-  o <- solve_scen(interpolate_model(cp, cal, CAP, name = paste0("cap", frac * 100)),
-                  solver = solver_options$julia_highs)
-  data.frame(cap = frac,
-             objective = getData(o, "vObjective", merge = TRUE)$value[1],
-             co2 = sum(getData(o, "vEmsFuelTot", merge = TRUE)$value))
-}
+A cap is a `newConstraint()` bounding total `vEmsFuelTot`. Write one per ceiling:
 
-sweep_cap <- bind_rows(lapply(c(1, 0.75, 0.5, 0.25), cap_run))
-sweep_cap |> mutate(cost_per_t = (objective - objective[1]) / (co2[1] - co2))
+```{r}
+cap75 <- newConstraint(
+  name = "CO2_CAP", eq = "<=",
+  for.each = data.frame(year = 2050, comm = "CO2"),
+  term1    = list(variable = "vEmsFuelTot"),
+  rhs      = data.frame(year = 2050, rhs = 0.75 * base_co2),
+  defVal   = Inf)
+
+cap50 <- newConstraint(
+  name = "CO2_CAP", eq = "<=",
+  for.each = data.frame(year = 2050, comm = "CO2"),
+  term1    = list(variable = "vEmsFuelTot"),
+  rhs      = data.frame(year = 2050, rhs = 0.50 * base_co2),
+  defVal   = Inf)
+
+cap25 <- newConstraint(
+  name = "CO2_CAP", eq = "<=",
+  for.each = data.frame(year = 2050, comm = "CO2"),
+  term1    = list(variable = "vEmsFuelTot"),
+  rhs      = data.frame(year = 2050, rhs = 0.25 * base_co2),
+  defVal   = Inf)
+
+sol_c75 <- solve_scen(interpolate_model(cp, cal, cap75, name = "c75"),
+                      solver = solver_options$julia_highs)
+sol_c50 <- solve_scen(interpolate_model(cp, cal, cap50, name = "c50"),
+                      solver = solver_options$julia_highs)
+sol_c25 <- solve_scen(interpolate_model(cp, cal, cap25, name = "c25"),
+                      solver = solver_options$julia_highs)
+```
+
+```{r}
+caps <- list(`100%` = sol_s, `75%` = sol_c75, `50%` = sol_c50, `25%` = sol_c25)
+
+getData(caps, "vEmsFuelTot", merge = TRUE) |>
+  group_by(scenario) |>
+  summarise(co2 = sum(value), .groups = "drop")
+
+getData(caps, "vObjective", merge = TRUE)
 ```
 
 | cap | CO₂ | objective | average cost per tonne |
@@ -576,7 +661,7 @@ options first, expensive ones last. It is steep here because the base case has
 already taken the cheap options — this is a 2050 cost world with a largely
 decarbonised fleet, so what remains is genuinely expensive to remove.
 
-Set the ceiling *from the unconstrained result*, as here, which is why 6.1 runs
+Set the ceiling *from the unconstrained result*, as here, which is why 7.1 runs
 first. A cap below what the system can physically reach makes the model
 infeasible, and **infeasibility is information, not an error to code around**: it
 says nothing in this system can deliver that ceiling. The useful response is to
@@ -584,12 +669,12 @@ ask what would have to be added, not to relax the cap until the solver stops
 complaining.
 :::
 
-## 6.9 — Compare the scenarios {#sec-compare}
+## 7.9 — Compare the scenarios {#sec-compare}
 
-**6.9 — Put tax and cap side by side.** Compare a tax and a cap that deliver
+**7.9 — Put tax and cap side by side.** Compare a tax and a cap that deliver
 similar abatement. Determine which is cheaper, and explain the difference.
 
-::: {.callout-tip collapse="true" title="Solution 6.9"}
+::: {.callout-tip collapse="true" title="Solution 7.9"}
 Pick the pair that lands closest together — tax 60 (CO₂ 216,577) and cap 50%
 (CO₂ 190,407):
 
@@ -619,29 +704,20 @@ So:
 - Which instrument you prefer follows from what you want certainty about:
   emissions (cap) or cost (tax).
 
+Both scenarios already exist — `sol_t60` from @sec-tax and `sol_c50` from
+@sec-cap — so put the three side by side and let `getData()` label them:
+
 ```{r}
-TAX60 <- newTax(name = "CT_CO2", comm = "CO2",
-                tax = data.frame(year = 2050, bal = 60))
-sol_tax <- solve_scen(interpolate_model(cp, cal, TAX60, name = "cmp_tax"),
-                      solver = solver_options$julia_highs)
+scns <- list(base = sol_s, `tax 60` = sol_t60, `cap 50%` = sol_c50)
 
-CAP50 <- newConstraint(
-  name = "CO2_CAP", eq = "<=",
-  for.each = data.frame(year = 2050, comm = "CO2"),
-  term1    = list(variable = "vEmsFuelTot"),
-  rhs      = data.frame(year = 2050, rhs = 0.50 * base_co2),
-  defVal   = Inf)
-sol_cap <- solve_scen(interpolate_model(cp, cal, CAP50, name = "cmp_cap"),
-                      solver = solver_options$julia_highs)
+getData(scns, "vObjective", merge = TRUE)
 
-scns <- list(base = sol_s, tax = sol_tax, cap = sol_cap)
-
-lapply(names(scns), function(nm) {
-  getData(scns[[nm]], "vTechOut", merge = TRUE) |>
-    group_by(tech) |> summarise(out = sum(value), .groups = "drop") |>
-    mutate(scenario = nm)
-}) |> bind_rows() |>
-  ggplot(aes(scenario, out, fill = tech)) + geom_col() + theme_bw()
+getData(scns, "vTechOut", merge = TRUE) |>
+  group_by(scenario, tech) |>
+  summarise(out = sum(value), .groups = "drop") |>
+  ggplot(aes(scenario, out, fill = tech)) +
+  geom_col() +
+  theme_bw()
 ```
 
 Plot the generation mix as well as the totals. An aggregate cost hides which
@@ -649,7 +725,7 @@ plant actually moved, and "which plant moved" is usually the finding worth
 reporting.
 :::
 
-## 6.10 — Demand doubles by 2050 {#sec-growth}
+## 7.10 — Demand doubles by 2050 {#sec-growth}
 
 Everything so far dispatched a fleet that already existed. This is the first
 question that makes the model **build**: what happens to Belgium if electricity
@@ -660,7 +736,7 @@ speed, which was a good bargain while varying horizons and carbon prices. It is 
 bad bargain here: this section is checked against PyPSA to the cent, and a
 sampled calendar would put a modelling approximation between the two models. With
 the full 8,760 hours and no transmission, nothing is left to excuse a difference
-— which is what makes the comparison in 6.10b worth anything.
+— which is what makes the comparison in 7.10b worth anything.
 
 Its starting point:
 
@@ -683,14 +759,14 @@ What can grow, and by how much, is what shapes the answer:
 | onwind | 1,724 | 15,235 |
 | offwind-ac | 2,752 | 2,752 (**pinned**) |
 
-**6.10 — Double the demand.** Solve the full-year copperplate as shipped, then
+**7.10 — Double the demand.** Solve the full-year copperplate as shipped, then
 again with demand doubled, and report what gets built. Then compare against the
 same experiment run in PyPSA. Predict, before you look, whether the extra demand
 is met by firm capacity or by renewables.
 
 Each of these solves takes about four and a half minutes.
 
-::: {.callout-tip collapse="true" title="Solution 6.10"}
+::: {.callout-tip collapse="true" title="Solution 7.10"}
 Doubling demand means editing the `demand` slot. There is no override shortcut
 here — the objects you passed through `...` in @sec-tax and @sec-cap were *new*
 objects, and passing a second `DEM_ELC` instead raises
@@ -698,17 +774,20 @@ objects, and passing a second `DEM_ELC` instead raises
 it:
 
 ```{r}
+objs <- getObject(cp)                 # every object, named
+objs[["DEM_ELC"]]@demand$demand <- objs[["DEM_ELC"]]@demand$demand * 2
+
 cp2 <- cp
-i <- which(vapply(cp2@data[[1]]@data, function(x) is(x, "demand"), logical(1)))
-d <- cp2@data[[1]]@data[[i]]
-d@demand$demand <- d@demand$demand * 2
-cp2@data[[1]]@data[[i]] <- d
+cp2@data[[1]] <- do.call(newRepository, c(list(name = "be_2x"), unname(objs)))
 
 base <- solve_scen(interpolate_model(cp,  name = "cp_base"),
                    solver = solver_options$julia_highs)
 x2   <- solve_scen(interpolate_model(cp2, name = "cp_2x"),
                    solver = solver_options$julia_highs)
 ```
+
+`getObject()` hands you the objects by name, and `newRepository()` puts them
+back — so the edit is one line on the object you care about.
 
 ::: {.callout-warning appearance="simple"}
 Note the missing `cal`: these interpolate on the model's **own** 8,760-hour
@@ -717,12 +796,11 @@ calendar, not the sample of @sec-sample. That is ~473,000 variables and about
 :::
 
 ```{r}
-capof <- function(s) {
-  getData(s, "vTechCap", merge = TRUE) |>
-    group_by(tech) |> summarise(cap = sum(value), .groups = "drop")
-}
-full_join(capof(base), capof(x2), by = "tech", suffix = c(".base", ".x2")) |>
-  mutate(built = cap.x2 - cap.base) |>
+getData(list(base = base, x2 = x2), "vTechCap", merge = TRUE) |>
+  group_by(scenario, tech) |>
+  summarise(cap = sum(value), .groups = "drop") |>
+  tidyr::pivot_wider(names_from = scenario, values_from = cap) |>
+  mutate(built = x2 - base) |>
   arrange(desc(built))
 ```
 
@@ -750,11 +828,11 @@ nearly absent in the base case — at higher renewable shares its flatter output
 profile earns its extra capital cost.
 :::
 
-**6.10b — Compare against PyPSA.** The same experiment was run in PyPSA and
+**7.10b — Compare against PyPSA.** The same experiment was run in PyPSA and
 shipped with the course, so you do not need a Python installation. Compare
 capacity, and account for any technology that does *not* match.
 
-::: {.callout-tip collapse="true" title="Solution 6.10b"}
+::: {.callout-tip collapse="true" title="Solution 7.10b"}
 ```{r}
 py <- readRDS("data/be_copperplate_pypsa.rds")
 py$note
@@ -797,7 +875,7 @@ That second point is the more useful habit: before treating a mismatch as a bug,
 check whether the quantity is actually pinned by the optimisation at all.
 :::
 
-## 6.11 — How long is your storage? {#sec-duration}
+## 7.11 — How long is your storage? {#sec-duration}
 
 A storage's *capacity* tells you how much energy it holds. It does not tell you
 **how long the energy stays there** — and that is usually the more interesting
@@ -807,7 +885,7 @@ number, because it is what separates a battery from a seasonal store.
 storage level into bands by how long the energy actually sits:
 
 ```{r}
-sd <- storage_duration(sol)     # `sol` from 6.1 -- needs the FULL-YEAR solution
+sd <- storage_duration(sol)     # `sol` from 7.1 -- needs the FULL-YEAR solution
 head(sd)
 levels(sd$duration)
 ```
@@ -831,11 +909,11 @@ sd <- readRDS("data/belgium_storage_duration.rds")
 ```
 :::
 
-**6.11 — Decompose the two stores.** Belgium has a battery and a hydrogen store.
+**7.11 — Decompose the two stores.** Belgium has a battery and a hydrogen store.
 Compute the share of each one's average level that falls in each band, and say
 what distinguishes them.
 
-::: {.callout-tip collapse="true" title="Solution 6.11"}
+::: {.callout-tip collapse="true" title="Solution 7.11"}
 ```{r}
 sd |>
   group_by(stg, duration) |>
@@ -891,12 +969,12 @@ summer and drains through winter. The battery chart is a thin band of short
 durations churning all year.
 :::
 
-**6.11b — Why this matters for sampling.** Re-read the caution in @sec-sample,
+**7.11b — Why this matters for sampling.** Re-read the caution in @sec-sample,
 then explain what a twelve-day sample would have done to the hydrogen result —
 and what that implies for any study that samples representative days and then
 reports on long-duration storage.
 
-::: {.callout-tip collapse="true" title="Solution 6.11b"}
+::: {.callout-tip collapse="true" title="Solution 7.11b"}
 A twelve-day sample has no 30-day window, so the `>30d` band — **98.4% of this
 store's energy** — cannot exist in it. Worse, the sample is twelve *disjoint*
 days: with `fullYear = TRUE` the state of charge cycles over the slices present
@@ -922,11 +1000,18 @@ The chain, so you can judge what the numbers mean:
    SARAH-3 weather reanalysis turned into hourly capacity factors by
    [atlite](https://atlite.readthedocs.io), and an hourly demand series. Belgium
    was clustered to **one node** and kept at its full **8,760 hours**.
-2. **A converter** (`PyPSA-Eur-to-energyRt`, not part of this course) mapped each
-   PyPSA component to an energyRt object: `Generator` → `technology` + a
-   `weather` factor, `Load` → `demand`, `Line`/`Link` → `trade`, `StorageUnit`
-   and `Store`+`Link` → `storage`, carriers → `commodity`.
+2. **A converter** mapped each PyPSA component to an energyRt object:
+   `Generator` → `technology` + a `weather` factor, `Load` → `demand`,
+   `Line`/`Link` → `trade`, `StorageUnit` and `Store`+`Link` → `storage`,
+   carriers → `commodity`.
 3. The result was serialised to `data/belgium_copperplate.rds` (about 285 KB).
+
+The same conversion, maintained and documented, is what
+[reneuro](https://optimal2050.github.io/reneuro/) packages — its
+[About](https://optimal2050.github.io/reneuro/articles/about.html) article
+covers the component mapping, the exclusion policy and the data licences in
+full. The copperplate here predates it and is kept because reneuro ships no
+one-node full-year Belgian model.
 
 Three things you should know about it:
 
@@ -936,12 +1021,12 @@ Three things you should know about it:
   cost. The base case reproduces PyPSA **to the cent** (@sec-growth), which is
   the strongest statement available about the conversion.
 
-  That is *not* true of a sampled model, and the difference is not small. The
-  5-node one-week dataset shipped alongside (`belgium_model.rds`) keeps PyPSA's
-  own `snapshot_weightings.objective = 1`, charging 168 hours of fuel against a
-  full year of capital. Let energyRt annualise that week instead — the default
-  it would otherwise choose — and capacity becomes cheap relative to fuel, so
-  the model builds renewables until **no fossil plant dispatches at all**:
+  That is *not* true of a sampled model, and the difference is not small. An
+  earlier one-week conversion of Belgium kept PyPSA's own
+  `snapshot_weightings.objective = 1`, charging 168 hours of fuel against a full
+  year of capital. Annualising that week instead makes capacity cheap relative
+  to fuel, and the model builds renewables until **no fossil plant dispatches at
+  all**:
 
   | weighting | objective | CO₂ | fuels burned |
   |---|---:|---:|---|
@@ -950,8 +1035,15 @@ Three things you should know about it:
 
   A model with no emissions has nothing for @sec-tax or @sec-cap to act on. On a
   **sampled** run the weighting convention is not a technicality — it decides
-  whether the model has a fossil fleet at all. On a full year there is nothing to
-  decide.
+  whether the model has a fossil fleet at all. On a full year there is nothing
+  to decide.
+
+  `reneuro::pypsa_eur_5` is the same week converted with the weighting handled
+  throughout rather than inherited: it ships with `year_fraction = 168/8760`
+  and still dispatches its fossil fleet — objective 164,664,297, burning
+  1,106,377 units of gas, 205,856 of waste and 39,887 of biomass. The table
+  above is what the convention costs when it is applied to only one side of the
+  accounts, not an argument against sampling.
 - **Transport, not power flow.** PyPSA imposes Kirchhoff's voltage law on AC
   cycles; energyRt's `trade` is a transport formulation. It makes no difference
   here — a copperplate has no lines — but it is the largest accepted semantic gap
@@ -962,7 +1054,8 @@ Three things you should know about it:
   dropped is recorded:
 
 ```{r}
-readRDS("data/belgium_provenance.rds")   # the 5-node dataset's register
+readRDS("data/belgium_provenance.rds")           # the copperplate's register
+attr(pypsa_eur_5, "reneuro_provenance")$source   # and reneuro's, per model
 ```
 
 ::: {.callout-important appearance="simple"}
@@ -1022,6 +1115,11 @@ restriction.
 This table is a summary, not legal advice, and licences change. Check
 `doc/data_inventory.csv` in the PyPSA-Eur version you actually use before
 redistributing anything derived from it.
+
+The same applies to the reneuro models, which carry their own record:
+`system.file("LICENSE.note", package = "reneuro")` gives provenance per shipped
+object, and the package's `NOTICE` states the three-way split between its
+sources, energyRt and the data.
 
 ## Where this connects
 

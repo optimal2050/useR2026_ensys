@@ -6,7 +6,7 @@
 # The chapters are written against this version. Bump it whenever the course
 # starts to rely on something newer, so participants on a stale install are
 # told at the top of the session rather than by a confusing error mid-chapter.
-WS_ENERGYRT_MIN <- "0.85.0"
+WS_ENERGYRT_MIN <- "0.88.0"
 
 #' Check the installed energyRt against the version the workshop needs.
 #'
@@ -50,11 +50,11 @@ set_default_solver(solver_options$glpk)
 
 # ---- workshop defaults ------------------------------------------------------
 WS_REGIONS  <- "R1"                                # build chapters: one region
-WS_CAL      <- calendars$utopia_s4h24              # 4 seasons x 24 hours (96 slices)
+WS_CAL      <- calendars$s4_h24                    # 4 seasons x 24 hours (96 slices)
 WS_DISCOUNT <- 0.05
 
 # deterministic capacity-factor / load / stock profiles shipped with energyRt
-prof <- utopia_profiles(WS_REGIONS, calendar = "utopia_s4h24")
+prof <- utopia_profiles(WS_REGIONS, calendar = "s4_h24")
 
 # ---- unit helpers (capacity GW, energy PJ, costs MEUR) ----------------------
 meur_gw  <- function(eur_per_kw)  convert("EUR/kW",  "MEUR/GW", eur_per_kw)

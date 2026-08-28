@@ -21,6 +21,10 @@ Moving energy between timeslices is what a `storage` does, so here the vehicle
 | `@storage` | the battery | kWh |
 | `@output` | kilometres | the motor, km/h |
 
+```{r}
+source("R/workshop-model.R")
+```
+
 The whole chapter runs on one day, resolved hourly:
 
 ```{r}
@@ -34,24 +38,36 @@ cal <- newCalendar(
 ```
 
 Saying `year_fraction = 1/365` is what makes a timeslice a real hour: each slice
-gets `share = 1/8760`, so `cap.up = 7` below means 7 kW and needs no further
+gets `share = 1/8760`, so `inp.cap.up = 7` below means 7 kW and needs no further
 argument. It also sets the slice `weight` to 365, which is why the costs quoted
 are a day's bill repeated across the year.
 
+Now the car, one slot at a time:
+
 ```{r}
-car <- newStorage(
-  "CAR",
-  input    = list(comm = "CHG", cap.up = 7),     # 7 kW on-board charger
-  storage  = list(comm = "BAT", cap.up = 60),    # 60 kWh battery
-  output   = list(comm = "KM"),                  # kilometres
+CAR <- newStorage(
+  name     = "CAR",
+  input    = list(comm = "ELC"),                 # what charges it
+  storage  = list(comm = "BAT"),                 # what it holds
+  output   = list(comm = "KM"),                  # what it delivers
   seff     = data.frame(inpeff = 0.90, outeff = 6),
-  af       = data.frame(cinp.up = 1, cout.up = 1),
-  capacity = list(cap.up = 120),                 # motor, km/h
+  af       = data.frame(timeslice = hrs, inp.af.up = 1),
+  capacity = list(inp.cap.up = 7,                # 7 kW on-board charger
+                  stg.cap.up = 60,               # 60 kWh battery
+                  out.cap.up = 120),             # motor, km/h
   duration = data.frame(duration.lo = 0, duration.up = 1e6),
   vintage  = data.frame(olife = 10L))
 ```
 
-Two things in there are worth stopping on.
+**The three roles declare; `@capacity` sizes.** `@input`, `@storage` and
+`@output` say *what* each side handles. Every capacity lives in `@capacity`
+under a prefix naming its part — `inp.` the charger, `stg.` the battery, `out.`
+the motor — which is why three numbers in three different units (kW, kWh, km/h)
+sit together in one place. A car is the clearest case there is: the thing that
+fills it, the thing that holds it and the thing that empties it are three
+different pieces of hardware with three different ratings.
+
+Three things in there are worth stopping on.
 
 **`seff` is not a round trip here.** `inpeff = 0.90` is charging loss (grid kWh →
 battery kWh) but `outeff = 6` is **six kilometres per kWh** — a conversion
@@ -60,11 +76,19 @@ between two different commodities, not an efficiency between 0 and 1. Because
 became a pair of cross-commodity factors. Only when all three coincide is it the
 round-trip efficiency you are used to.
 
+**The `af` rows are what make 7 kW an hourly rating.** A part capacity with no
+sub-annual availability row limits the part's **annual throughput** only — the
+model could then push the whole charge through one hour. Listing the hours in
+`@af` puts the bound where the hardware is: at most `inp.cap.up × 1` kWh may
+flow in *each* hour.
+
 **`duration` is switched off on purpose.** `duration` is the ratio of storing
 capacity to output capacity, and it is normally a number of *hours*. Here the
 reservoir is in kWh and the motor in km/h — different dimensions — so the ratio
 is not an hour count and pinning it would be meaningless. Opening it and bounding
-the battery directly with `storage = list(cap.up = 60)` says what we mean.
+the battery directly with `capacity = list(stg.cap.up = 60)` says what we mean.
+(Try deleting the `duration` line: the default ties the battery to the motor
+rating and the bill jumps from 202.78 to 324.44.)
 
 ## 5.1 — Passenger car: the schedule is given {#sec-ev-commute}
 
@@ -75,43 +99,80 @@ The driver commutes 30 km at 08:00 and 30 km back at 18:00 — that is fixed. Th
 grid price is not: cheap before 06:00, expensive between 17:00 and 21:00. The
 only decision left is when to charge.
 
+Build the model the way every chapter has: commodities first, then the
+processes, then a repository, then the model.
+
+```{r}
+ELC <- newCommodity(name = "ELC", desc = "Grid electricity", timeframe = "HOUR")
+BAT <- newCommodity(name = "BAT", desc = "Battery charge",   timeframe = "HOUR")
+KM  <- newCommodity(name = "KM",  desc = "Kilometres",       timeframe = "HOUR")
+```
+
 ```{r}
 price <- ifelse(0:23 < 6, 0.05, ifelse(0:23 >= 17 & 0:23 <= 21, 0.40, 0.15))
 
-m1 <- newModel(
-  name = "ev_commute", region = "R1", horizon = newHorizon(2020),
-  discount = 0, calendar = cal,          # the one-day calendar above
-  repo = newRepository("r1",
-    newCommodity("ELC", timeframe = "HOUR"),
-    newCommodity("BAT", timeframe = "HOUR"),
-    newCommodity("KM",  timeframe = "HOUR"),
-    newSupply("GRID", commodity = "ELC",
-              supply = data.frame(timeslice = hrs, cost = price)),
-    car,
-    newDemand("TRIPS", commodity = "KM",
-              demand = data.frame(timeslice = c("h08", "h18"), demand = 30))))
+GRID <- newSupply(
+  name      = "GRID",
+  desc      = "Grid electricity at an hourly tariff",
+  commodity = "ELC",
+  supply    = data.frame(timeslice = hrs, cost = price))
+
+TRIPS <- newDemand(
+  name      = "TRIPS",
+  desc      = "The commute: 30 km out, 30 km back",
+  commodity = "KM",
+  demand    = data.frame(timeslice = c("h08", "h18"), demand = 30))
 ```
 
-Solved, this draws **11.11 kWh** — 60 km ÷ 6 km/kWh ÷ 0.90 — and takes all of it
-in hours **04 and 05**, the last of the cheap window, for an annual bill of
-**202.78** (0.5556 for the day, repeated 365 times). Charging as late as the
-cheap tariff allows is not an accident: with nothing else to separate the cheap
-hours, any of them would do, and the solver simply reports one optimal answer.
+```{r}
+repo_COMMUTE <- newRepository("repo_COMMUTE", ELC, BAT, KM, GRID, CAR, TRIPS)
+
+mod_COMMUTE <- newModel(
+  name     = "EV_COMMUTE",
+  desc     = "One car, a fixed commute, an hourly tariff",
+  data     = repo_COMMUTE,
+  region   = "R1",
+  horizon  = newHorizon(2020),
+  discount = 0,
+  calendar = cal)
+
+scen_COMMUTE <- interpolate_model(mod_COMMUTE, name = "COMMUTE") |>
+  solve_scenario(echo = FALSE)
+```
+
+Read the answer straight from the solution:
+
+```{r}
+getData(scen_COMMUTE, "vObjective", merge = TRUE)$value      # annual bill
+
+getData(scen_COMMUTE, "vStorageInp", merge = TRUE, timeframe = "highest") |>
+  filter(value > 1e-9) |>
+  select(timeslice, value)                                   # when it charges
+```
+
+The car draws **11.11 kWh** — 60 km ÷ 6 km/kWh ÷ 0.90 — entirely inside the
+cheap window, for an annual bill of **202.78** (0.5556 for the day, repeated
+365 times). *How* the 11.11 kWh is split across the six cheap hours is
+**degenerate**: every split costs the same, so the solver reports one optimal
+answer among many — here an even 1.85 kWh per hour, on another machine perhaps
+two full-power hours. Exercise 5.1d makes this point explicit.
 
 **Exercises.**
 
 **5.1a** Reproduce the numbers. Check the energy chain by hand:
 `vStorageInp * inpeff == vStorageOut / outeff`.
 
-**5.1b** Shrink the charger to `cap.up = 3`. How many hours does charging spread
-over, and does the bill change? Explain why or why not.
+**5.1b** Shrink the charger: rebuild `CAR` with `inp.cap.up = 2`, then `1.8`.
+(Replace it in the model with `add(mod_COMMUTE, CAR, overwrite = TRUE)`.)
+At 2 kW the bill is unchanged — why? At 1.8 kW it rises to **214.13** — where
+did the extra charging go, and why exactly there?
 
-**5.1c** Add a second cheap window at midday (solar). Does the car use it? Add a
-`storage = list(cap.up = 15)` small battery and try again — what changed?
+**5.1c** Add a second cheap window at midday (solar). Does the car use it? Set
+`stg.cap.up = 15` and try again — what changed?
 
-**5.1d** The answer above is *degenerate*: several charging schedules cost
-exactly the same. Add a tiny per-kWh `varom` and confirm the solution stops
-moving between runs. Why is degeneracy worth noticing in a real study?
+**5.1d** Add a tiny per-kWh `varom` to the storage and confirm the charging
+schedule stops moving between runs. Why is degeneracy worth noticing in a real
+study?
 
 ## 5.2 — Freight van: the schedule is a decision too {#sec-ev-freight}
 
@@ -119,32 +180,77 @@ moving between runs. Why is degeneracy worth noticing in a real study?
 than a profile, and how to express that with `newConstraint()`.
 
 A delivery van must cover 240 km in the day. *When* it drives is up to the
-operator. Instead of an hourly `newDemand()`, put the requirement on the daily
-total and let the optimiser choose both the driving hours and the charging hours:
+operator. First the van — a bigger charger and battery, same three roles:
 
 ```{r}
-route <- newConstraint(
-  name = "ROUTE", eq = ">=",
-  for.each = list(region = "R1", year = 2020L),
-  term1 = list(variable = "vStorageOut",
-               for.sum = list(stg = "VAN", comm = "KM", timeslice = hrs)),
-  defVal = 240)
+VAN <- newStorage(
+  name     = "VAN",
+  input    = list(comm = "ELC"),
+  storage  = list(comm = "BAT"),
+  output   = list(comm = "KM"),
+  seff     = data.frame(inpeff = 0.90, outeff = 6),
+  af       = data.frame(timeslice = hrs, inp.af.up = 1),
+  capacity = list(inp.cap.up = 22,               # depot charger, kW
+                  stg.cap.up = 100,              # kWh
+                  out.cap.up = 60),              # km/h
+  duration = data.frame(duration.lo = 0, duration.up = 1e6),
+  vintage  = data.frame(olife = 10L))
 ```
 
-The van (22 kW charger, 100 kWh battery) covers its 240 km and charges entirely
-in hours **00–05**, at an annual cost of **811.11**. The driving itself spreads across all 24 hours, because
-nothing distinguishes them — a *degenerate* schedule again, and a useful prompt.
+Instead of an hourly `newDemand()`, put the requirement on the daily total and
+let the optimiser choose both the driving hours and the charging hours:
+
+```{r}
+ROUTE <- newConstraint(
+  name     = "ROUTE", eq = ">=",
+  for.each = list(region = "R1", year = 2020L),
+  term1    = list(variable = "vStorageOut",
+                  for.sum = list(stg = "VAN", comm = "KM", timeslice = hrs)),
+  defVal   = 240)
+```
+
+The model reuses the commodities and the grid from 5.1 — a repository is just a
+bag of objects, so build a new one from the same pieces:
+
+```{r}
+repo_FREIGHT <- newRepository("repo_FREIGHT", ELC, BAT, KM, GRID, VAN)
+
+mod_FREIGHT <- newModel(
+  name     = "EV_FREIGHT",
+  desc     = "A van with a daily route total",
+  data     = repo_FREIGHT,
+  region   = "R1",
+  horizon  = newHorizon(2020),
+  discount = 0,
+  calendar = cal)
+
+scen_FREIGHT <- interpolate_model(mod_FREIGHT, name = "FREIGHT", ROUTE) |>
+  solve_scenario(echo = FALSE)
+
+getData(scen_FREIGHT, "vObjective", merge = TRUE)$value
+```
+
+(Note where `ROUTE` went: a constraint is layered onto a scenario at
+`interpolate_model()` — the same pattern the UTOPIA kits use for their policy
+levers.)
+
+The van covers its 240 km and charges entirely inside the cheap window, at an
+annual cost of **811.11**. The driving itself is spread across the day, because
+nothing distinguishes the hours — a *degenerate* schedule again, and a useful
+prompt.
 
 **Exercises.**
 
-**5.2a** Build it and confirm the 240 km is met and charging sits in the cheap
+**5.2a** Build it and confirm the 240 km is met
+(`getData(scen_FREIGHT, "vStorageOut", ...)`) and charging sits in the cheap
 window.
 
 **5.2b** The driving schedule is degenerate. Add a delivery window — no driving
-before 07:00 or after 19:00 — with `af = data.frame(timeslice = <night hours>,
-cout.up = 0)`. Now when does it drive, and when does it charge?
+before 07:00 or after 19:00 — with a second `newConstraint()` (`eq = "<="`,
+`defVal = 0`) summing `vStorageOut` over the night hours. Now when does it
+drive, and when does it charge?
 
-**5.2c** Give the van a **depot-only** charger: `cinp.up = 0` except between
+**5.2c** Give the van a **depot-only** charger: `inp.af.up = 0` except between
 22:00 and 06:00. Does the route survive? What is the smallest battery that still
 works?
 
@@ -166,45 +272,114 @@ out infeasible. Until it does, the constraint above is the way to express it.
 *Learning goal:* shared infrastructure as a **capacity several processes compete
 for**, and what congestion costs.
 
-Three cars, one post. Each car keeps its own 7 kW on-board charger — that is
-`@input$cap.up`, a property of the vehicle — but all three now draw through a
-single `POST` whose rating is the thing under study.
+Three cars, one post. Each car keeps its own 7 kW on-board charger — that is a
+property of the vehicle — but all three now draw through a single `POST` whose
+rating is the thing under study. The post is a plain technology converting grid
+electricity into "electricity at the post", a new commodity the cars charge
+from:
 
 ```{r}
-post <- newTechnology(
-  "POST", input = list(comm = "ELC"), output = list(comm = "CHG"),
-  capacity = data.frame(cap.up = post_kw),
-  cap2act = 8760,                    # a technology defaults to 1 -> state it
-  vintage = data.frame(olife = 10L))
+CHG <- newCommodity(name = "CHG", desc = "Electricity at the post",
+                    timeframe = "HOUR")
+
+POST <- newTechnology(
+  name     = "POST",
+  desc     = "The shared charging post",
+  input    = list(comm = "ELC"),
+  output   = list(comm = "CHG"),
+  capacity = data.frame(cap.up = 6),   # the rating under study, kW
+  cap2act  = 8760,                     # a technology defaults to 1 -> state it
+  vintage  = data.frame(olife = 10L))
+```
+
+Each car needs its own kilometres — three commodities, three cars, three
+commutes. The cars are the `CAR` of 5.1 with two changes: they charge from
+`CHG`, and each delivers its own `KM_*`:
+
+```{r}
+KM_A <- newCommodity(name = "KM_A", timeframe = "HOUR")
+KM_B <- newCommodity(name = "KM_B", timeframe = "HOUR")
+KM_C <- newCommodity(name = "KM_C", timeframe = "HOUR")
+
+CAR_A <- newStorage(
+  name     = "CAR_A",
+  input    = list(comm = "CHG"),
+  storage  = list(comm = "BAT"),
+  output   = list(comm = "KM_A"),
+  seff     = data.frame(inpeff = 0.90, outeff = 6),
+  af       = data.frame(timeslice = hrs, inp.af.up = 1),
+  capacity = list(inp.cap.up = 7, stg.cap.up = 60, out.cap.up = 120),
+  duration = data.frame(duration.lo = 0, duration.up = 1e6),
+  vintage  = data.frame(olife = 10L))
+CAR_B <- update(CAR_A, name = "CAR_B", output = list(comm = "KM_B"))
+CAR_C <- update(CAR_A, name = "CAR_C", output = list(comm = "KM_C"))
+
+TRIPS_A <- newDemand(name = "TRIPS_A", commodity = "KM_A",
+                     demand = data.frame(timeslice = c("h08", "h18"), demand = 30))
+TRIPS_B <- update(TRIPS_A, name = "TRIPS_B", commodity = "KM_B")
+TRIPS_C <- update(TRIPS_A, name = "TRIPS_C", commodity = "KM_C")
+```
+
+```{r}
+repo_SHARED <- newRepository("repo_SHARED",
+  ELC, CHG, BAT, KM_A, KM_B, KM_C,
+  GRID, POST, CAR_A, CAR_B, CAR_C,
+  TRIPS_A, TRIPS_B, TRIPS_C)
+
+mod_SHARED <- newModel(
+  name     = "EV_SHARED",
+  desc     = "Three cars behind one post",
+  data     = repo_SHARED,
+  region   = "R1",
+  horizon  = newHorizon(2020),
+  discount = 0,
+  calendar = cal)
+
+scen_SHARED <- interpolate_model(mod_SHARED, name = "SHARED") |>
+  solve_scenario(echo = FALSE)
+
+getData(scen_SHARED, "vObjective", merge = TRUE)$value
+```
+
+To sweep the rating, swap the post and re-solve — `add()` with
+`overwrite = TRUE` replaces an object of the same name wherever it sits:
+
+```{r}
+POST2 <- update(POST, capacity = data.frame(cap.up = 2))
+
+scen_SHARED2 <- add(mod_SHARED, POST2, overwrite = TRUE) |>
+  interpolate_model(name = "SHARED2") |>
+  solve_scenario(echo = FALSE)
+
+getData(scen_SHARED2, "vObjective", merge = TRUE)$value
 ```
 
 Sweeping the post rating, with the three cars needing 33.3 kWh between them:
 
-| post | annual cost | peak draw | hours charging |
-|---:|---:|---:|---:|
-| 21 kW | 608.33 | 14.00 kW | 3 |
-| 10 kW | 608.33 | 10.00 kW | 4 |
-| 6 kW | 608.33 | 6.00 kW | 6 |
-| 2 kW | **1387.00** | 2.00 kW | 18 |
-| 1.2 kW | infeasible | | |
+| post | annual cost | hours charging |
+|---:|---:|---:|
+| 21 kW | 608.33 | 6 |
+| 10 kW | 608.33 | 6 |
+| 6 kW | 608.33 | 6 |
+| 2 kW | **1387.00** | 19 |
+| 1.2 kW | infeasible | |
 
 This is the whole story of shared charging in one table. Down to 6 kW the post
 costs nothing: there are exactly six cheap hours, and the fleet of three still
-fits all its charging inside them. Above that the post stops binding at all — the
-cars' own 7 kW chargers become the limit, which is why the peak draw stops rising.
-Below 6 kW the fleet cannot fit, charging spills into the expensive evening, and
-the bill **more than doubles**. Keep shrinking and the energy cannot be delivered
-at all.
+fits all its 33.3 kWh inside them (6 kW × 6 h = 36 kWh). Below 6 kW the fleet
+cannot fit, charging spills into the expensive hours, and the bill **more than
+doubles**. Keep shrinking and the energy cannot be delivered at all: at 1.2 kW
+even 24 hours of charging fall short, and the model is infeasible.
 
 **Exercises.**
 
-**5.3a** Reproduce the sweep. Find the rating at which cost first rises — the
-point where the post starts binding — and explain why it is 6 kW and not
-something else. Then explain the *other* end: why does raising the post above
-7 kW change nothing at all?
+**5.3a** Reproduce the sweep with `add(..., overwrite = TRUE)` as above. Find
+the rating at which cost first rises — the point where the post starts binding —
+and explain why it is 6 kW and not something else.
 
 **5.3b** Give `POST` an `invcost` and let the model *size* it instead of
-asserting a rating. Does it choose the knee of the curve? Should it?
+asserting a rating (drop `cap.up`). Does it choose the knee of the curve?
+Should it?
 
 **5.3c** Stagger the fleet: give one car a morning commute and another an
 evening shift. Does the shared post get cheaper per car? This is the

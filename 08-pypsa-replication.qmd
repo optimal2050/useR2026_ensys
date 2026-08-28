@@ -11,6 +11,7 @@ energyRt — then checks whether the rebuilt model does the same arithmetic.
 
 ```{r}
 library(energyRt)
+library(reneuro)
 library(dplyr)
 library(ggplot2)
 ```
@@ -62,25 +63,31 @@ overlays and temporal averaging — and maps each component onto energyRt object
 | `Load` | `demand` | |
 | `Line` (AC) | `trade` | merged by bus pair; **KVL not reproduced** |
 | `Link` (DC) | `trade` | merged by bus pair |
-| `Link` (converter) | `technology` | charger / discharger |
+| `Link` (converter) | folded into `storage` | charge / discharge efficiency |
 | `StorageUnit` | `storage` | with inflow: decomposed into supply + storage + technology |
 | `Store` | `storage` | reservoir |
 | carriers | `commodity` (+ `supply`) | |
 
 For the 41-node European network — 123 buses, 77 AC lines, 213 links, 397
 generators, 59 storage units, 82 stores, 8,760 hourly snapshots — that produces
-**147 energyRt objects** in about 11 seconds:
+**143 energyRt objects**:
 
 ```{r}
-eu   <- readRDS("data/eu41_model.rds")
-repo <- eu@data[[1]]
-summary(repo)
+eu <- pypsa_eur_41       # from reneuro; nothing to convert, nothing to download
+summary(eu)
 ```
 
 ```
+Regions: 41 (AL0 0, AT0 0, BA0 0, BE0 0, BG0 0, ...)
+Objects: 143
  commodity  demand  storage  supply  technology  trade  weather
-        13       1        4       9          21     92        7
+        13       1        4       9          17     92        7
 ```
+
+The converter folds each `Store` and its two `Link`s into a single `storage`
+object rather than emitting separate charger and discharger technologies, which
+is why the technology count is 17 and not 21; @sec-storage-shape is what that
+choice is about.
 
 ### Nothing disappears quietly {#sec-issues}
 
@@ -123,6 +130,23 @@ autoplot(getObject(eu, class = "supply")[[1]], interpolate = TRUE)
 # model carries `year = NA` as a wildcard, which yields "no rows to aggregate".
 autoplot(getObject(eu, name = "DEM_ELC")[[1]], style = "line")
 ```
+
+The model also carries **geography**. PyPSA-Eur keeps its region polygons in
+GeoJSON sidecars rather than inside the `.nc`, and the converter turns them into a
+`geoscales` hierarchy — `country -> bus`, 36 countries over 41 buses — attached to
+the model. `plot_trade_map()` then needs no arguments:
+
+```{r}
+plot_trade_map(eu)
+```
+
+41 nodes and 90 trade routes over the region polygons. This is the quickest check
+that the conversion is spatially sane: a name-matching or CRS error puts the
+arrows in the sea rather than on the map.
+
+The geometry is simplified for shipping (`rmapshaper::ms_simplify(keep = 0.03)`),
+which takes the 41 regions from 2.91 MB compressed to 0.20 MB and is
+indistinguishable at this scale.
 
 Weather factors are where a converted model is easiest to sanity-check, because
 mistakes are visible. `autoplot.weather()` draws a heatmap by default — hour of
@@ -290,10 +314,10 @@ you find something wrong, that is a useful outcome of the exercise.
 
 ## Reproduce it yourself {#sec-reproduce}
 
-Both artefacts ship with the course:
+The model comes from reneuro; the issue register ships with the course:
 
 ```{r}
-eu <- readRDS("data/eu41_model.rds")          # the converted 41-node model
+eu <- pypsa_eur_41                             # the converted 41-node model
 getCalendar(eu)                                # 8760 timeslices, full year
 readRDS("data/eu41_provenance.rds")            # coverage table + issue register
 ```
@@ -330,8 +354,10 @@ Two traps in `newCalendar()`, each of which costs a failed run:
   that costs.
 :::
 
-The source network is shipped too (`data/base_s_41_elec.nc`, 14.8 MB), so the
-conversion itself can be re-run with the `PyPSA-Eur-to-energyRt` converter.
+Re-running the conversion itself is outside this course. reneuro's
+[About](https://optimal2050.github.io/reneuro/articles/about.html) article
+documents how each model was built and from which PyPSA-Eur commit, and
+`attr(eu, "reneuro_provenance")` records it per object.
 
 ## Credits and licences {#sec-credits}
 

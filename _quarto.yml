@@ -48,11 +48,13 @@ book:
         - 04-special-processes.qmd
         # - 05-policy-scenarios.qmd   # moved to notes/ (draft)
         - 05-electric-vehicles.qmd
-        - 06-real-model.qmd
+        - 06-life-cycle.qmd
+        - 07-real-model.qmd
         # - 07-energy-rhapsody.qmd
     - part: "Case study"
       chapters:
-        - 07-pypsa-replication.qmd
+        - 08-pypsa-replication.qmd
+        - 09-usensys-us26.qmd
   navbar:
     search: true
     collapse: true

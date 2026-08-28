@@ -1,0 +1,401 @@
+---
+output: html_document
+editor_options:
+  chunk_output_type: inline
+---
+# USENSYS: a 26-zone US model {#sec-usensys}
+
+The last chapter replicated a model converted from someone else's framework.
+This one hands you a **finished national model**: USENSYS, the United States
+electricity system in 26 zones, built for a multi-model intercomparison
+(MIP) from the same [PowerGenome](https://github.com/PowerGenome/PowerGenome)
+inputs that fed GenX, Switch and TEMOA. Real plant — 1,663 resources
+aggregated to ~1,580 technologies — real hourly demand and weather for a
+52-week year, 57 transmission corridors, storage, a national CO₂ cap with a
+$200/t backstop, and six milestone years from 2027 to 2050.
+
+You will not build it. You will do what modelers do with an inherited model:
+load it, look at its map, weigh it, sample it, solve it, question it, and
+change it.
+
+```{r}
+library(US26MIP)     # loads energyRt
+library(dplyr)
+library(ggplot2)
+```
+
+::: {.callout-note appearance="simple"}
+Nothing executes at render (`eval: false` site-wide). The numbers quoted in
+the text come from a local run (HiGHS barrier, no crossover, on a desktop
+with 64 GB RAM) and are there so you can tell whether yours went right — not
+as values to reproduce exactly.
+:::
+
+## One package, one model {#sec-us26-load}
+
+The model ships **prebuilt** inside the `US26MIP` package (see the
+installation chapter): the ~100 MB download *is* the model, stored the way
+energyRt stores models on disk, with the big hourly tables loaded lazily.
+
+```{r}
+mod <- us26_model()
+summary(mod@data[[1]])
+mod@config@region
+```
+
+Twenty-six zones — the PowerGenome aggregation of EPA's IPM regions — with
+the map attached:
+
+```{r}
+plot_geoscale(getGeoscale(mod), type = "map")
+```
+
+The package also ships the planning horizon and a family of calendars:
+
+```{r}
+us26_horizon@intervals$mid    # 2027 2030 2035 2040 2045 2050
+names(us26_calendars)
+```
+
+| calendar | timeslices | what it is |
+|---|---:|---|
+| `w52_h168` | 8,736 | the full year (the model's own calendar) |
+| `w8_h168` | 1,344 | 8 sampled weeks |
+| `w4_h168` | 672 | 4 sampled weeks |
+| `w2_h168` | 336 | 2 sampled weeks |
+| `s4d_h24` | 96 | 4 seasonal representative days |
+
+```{r}
+# Full (52-weeks) calendar
+autoplot(us26_calendars$w52_h168)
+```
+
+Sampling here is the same move as in @sec-realmodel: the model keeps its
+full calendar; you pass a sampled one to `interpolate_model()` and the
+timeslice weights annualize what is left.
+
+```{r}
+# 8 weeks calendar
+autoplot(us26_calendars$w8_h168)
+```
+
+```{r}
+# 8 weeks calendar sample on the 52-weeks calendar
+autoplot(us26_calendars$w8_h168, reference = us26_calendars$w52_h168)
+```
+
+
+```{r}
+report(mod, format = "html")
+```
+
+
+
+## Sampled solution {#sec-us26-size}
+
+The polite habit from @sec-realmodel — `model_size()` before solving —
+matters more here, and this model adds a second cost the Belgian one did not
+have: **interpolation time**. Turning ~3,000 declared objects into a
+scenario takes real minutes regardless of the calendar, because every
+technology, storage and weather table is visited either way.
+
+From the local run, for orientation:
+
+| step | 4 seasonal days (96 ts) | full year (8,736 ts) |
+|---|---|---|
+| `interpolate_model()`, all 26 zones | ~35 min, ~25 GB RAM | ~35+ min, more RAM |
+| HiGHS barrier solve, one year | ~2 min | hours |
+| HiGHS barrier solve, 6-step myopic | ~4 h total | overnight+ |
+
+Two consequences. First: on the full 26-zone model you interpolate **once**
+and reuse the scenario; you do not iterate. Second: for the exercises, where
+you *will* iterate, the package ships a subset accessor — `us26_wecc()`,
+the six western-interconnection zones — which cuts every number above by
+roughly a factor of four (@sec-us26-ex-solve).
+
+::: {.callout-note appearance="simple"}
+Use **Julia/HiGHS** (`solver_options$julia_highs`, or `_barrier` for the
+interior-point method without crossover). GLPK is out of its depth at this
+scale — keep it for the WECC subset on the 2-week calendar at most.
+:::
+
+## Solve one year {#sec-us26-solve}
+
+The cheapest meaningful solve: 2027 only, on the four seasonal days.
+
+```{r}
+set_progress_bar("progress") 
+show_progress_bar(TRUE)
+scen <- interpolate_model(
+  mod,
+  us26_calendars$s4d_h24,
+  newHorizon(period = 2027, intervals = 1),
+  name = "us26-2027-s4d", 
+  sparse = TRUE, fold = TRUE, # optimizes input data
+  verbose = TRUE
+)
+summary(scen)
+model_size(scen)
+scen <- solve_scenario(scen, 
+                       wait = F, # opens a cmd-window on Windows
+                       solver = solver_options$julia_highs_barrier)
+scen@path # where is your solution
+scen <- read_solution(scen)
+
+```
+
+The local run lands on an objective of **131,331,824,562** (about $131 bn of
+discounted system cost for the single year) in **~2 minutes** of solver time
+after the ~35-minute interpolation.
+
+What is running? Ask the solution:
+
+```{r}
+gen <- getData(scen, name = "vTechOut", comm = "ELC", merge = TRUE,
+               process = TRUE, timeframe = "lowest") |>
+  mutate(tech = case_when(
+    grepl("nuclear", process) ~ "nuclear",
+    grepl("natural_?gas|ngcc|ngct|_cc_|_ct_", process) ~ "gas",
+    grepl("coal", process) ~ "coal",
+    grepl("wind", process) ~ "wind",
+    grepl("solar|photovoltaic|utilitypv", process) ~ "solar",
+    grepl("hydro", process) ~ "hydro",
+    .default = "other")) |>
+  summarise(TWh = sum(value) / 1e6, .by = tech) |>
+  arrange(desc(TWh))
+gen
+
+ggplot(gen, aes(TWh, reorder(tech, TWh))) +
+  geom_col() +
+  labs(y = NULL, title = "US generation, 2027 (4-day sample)")
+```
+
+And because the geoscale rides inside the model, results map without any
+`sf` bookkeeping:
+
+```{r}
+plot_map(scen, name = "vTechNewCap", facet = "year")
+```
+
+## Six myopic steps to 2050 {#sec-us26-myopic}
+
+The intercomparison ran USENSYS **myopically** — each milestone year solved
+on its own, installed capacity carried forward — which is one call in
+current energyRt:
+
+```{r}
+mod0 <- mod
+mod0@config@discount$discount <- 0     # myopic runs use no social discounting
+
+myo <- solve_myopic(
+  mod0,
+  "us26-myopic-s4d",
+  us26_calendars$s4d_h24,
+  horizon = us26_horizon,
+  step = 1L,
+  carry = "capacity",
+  solver = solver_options$julia_highs_barrier
+)
+myo$steps
+```
+
+The local run solves all six steps in about four hours (the interpolation,
+not the solver, is the cost — each step re-interpolates and then solves in
+~2 minutes):
+
+| step | year | objective |
+|---:|---|---:|
+| 1 | 2027 | 1.313 × 10¹¹ |
+| 2 | 2030 | 6.823 × 10¹¹ |
+| 3 | 2035 | 8.272 × 10¹¹ |
+| 4 | 2040 | 9.181 × 10¹¹ |
+| 5 | 2045 | 1.028 × 10¹² |
+| 6 | 2050 | 1.609 × 10¹² |
+
+(The per-step objectives are not comparable to a perfect-foresight run —
+carried capacity is sunk and pays no investment annuity in later steps; use
+`myopic_objective()` for a discounted total.)
+
+## The exercise model: WECC {#sec-us26-wecc}
+
+Everything below runs on the western interconnection — six zones, about a
+quarter of the model, small enough to interpolate-change-solve in a coffee
+break:
+
+```{r}
+wecc <- us26_wecc()
+wecc@config@region
+# "BASN" "CANO" "CASO" "NWPP" "RMRG" "SRSG"
+```
+
+One honest caveat: subsetting drops the DC interties to ERCOT and the
+Eastern Interconnection (energyRt tells you so, line by line, as it
+removes them), so WECC here is an island. For teaching, that is fine; for
+analysis you would price the boundary (see `interpolate_model(...,
+boundary_prices = )`).
+
+## 9.1 — Solve WECC {#sec-us26-ex-solve}
+
+**9.1 — Interpolate and solve.** One year (2027), four seasonal days, the
+WECC subset. Report the objective and how long each step took.
+
+::: {.callout-tip collapse="true" title="Solution 9.1"}
+```{r}
+scen_w <- interpolate_model(
+  wecc,
+  us26_calendars$s4d_h24,
+  newHorizon(period = 2027, intervals = 1),
+  name = "wecc-2027-s4d"
+)
+scen_w <- solve_scenario(scen_w, solver = solver_options$julia_highs)
+scenario_runs(scen_w)$objective
+```
+The local run interpolates in **⟨WECC_INTERP⟩ minutes**, solves in
+**⟨WECC_SOLVE⟩**, and lands on **⟨WECC_OBJ⟩** — your number should match to
+solver tolerance.
+:::
+
+## 9.2 — Price the carbon differently {#sec-us26-ex-backstop}
+
+**9.2 — Raise the backstop.** The base case caps national CO₂ but lets the
+model buy its way out at $200/t (an export of `CO2` at a negative price —
+find the `CO2EXP` object). Replace it with a $1,000/t backstop, re-solve
+2027, and compare emissions.
+
+::: {.callout-tip collapse="true" title="Solution 9.2"}
+```{r}
+CO2EXP1000 <- newExport("CO2EXP", commodity = "CO2",
+                        exp = list(price = -1000))
+scen_hi <- interpolate_model(
+  wecc, CO2EXP1000,                       # overrides the model's CO2EXP
+  us26_calendars$s4d_h24,
+  newHorizon(period = 2027, intervals = 1),
+  name = "wecc-2027-co2-1000"
+)
+scen_hi <- solve_scenario(scen_hi, solver = solver_options$julia_highs)
+
+bind_rows(
+  base = getData(scen_w,  name = "vBalance", comm = "CO2",
+                 merge = TRUE, timeframe = "lowest"),
+  hi   = getData(scen_hi, name = "vBalance", comm = "CO2",
+                 merge = TRUE, timeframe = "lowest"),
+  .id = "case") |>
+  summarise(Mt = sum(value) / 1e6, .by = case)
+```
+In 2027 the fleet is essentially fixed (stock capacity, one build year), so
+expect a *modest* drop — the interesting version of this exercise is
+re-running the myopic sequence, where a 5× carbon price reshapes what gets
+built after 2030.
+:::
+
+## 9.3 — More demand in California {#sec-us26-ex-demand}
+
+**9.3 — +10 % demand in CANO.** Scale the 2027 hourly load in the CANO zone
+up by 10 %, re-solve, and find out what serves it: which technologies
+generate more, and does anything new get built (`vTechNewCap`)?
+
+::: {.callout-tip collapse="true" title="Solution 9.3"}
+```{r}
+DEM <- wecc@data[[1]]@data[["DEMELC"]]
+dem <- DEM@demand |>
+  mutate(demand = if_else(region == "CANO", demand * 1.10, demand))
+DEM2 <- update(DEM, demand = dem)
+
+scen_d <- interpolate_model(
+  wecc, DEM2,
+  us26_calendars$s4d_h24,
+  newHorizon(period = 2027, intervals = 1),
+  name = "wecc-2027-dem110"
+)
+scen_d <- solve_scenario(scen_d, solver = solver_options$julia_highs)
+
+getData(scen_d, name = "vTechNewCap", merge = TRUE,
+        timeframe = "lowest") |>
+  arrange(desc(value)) |>
+  head(10)
+```
+Compare `vTechOut` by zone between `scen_w` and `scen_d` too: some of the
+extra CANO load is met locally, some rides the WECC lines in.
+:::
+
+## 9.4 — Who generates, what is wasted {#sec-us26-ex-getdata}
+
+**9.4a — Top five.** From the 9.1 solution, list the five technologies with
+the largest 2027 generation.
+
+**9.4b — Curtailment.** VRE availability is an *upper* bound
+(`waf.up`-style), so what the wind and solar fleet *could* have produced and
+what it *did* produce differ. Estimate the curtailed share.
+
+::: {.callout-tip collapse="true" title="Solution 9.4"}
+```{r}
+out <- getData(scen_w, name = "vTechOut", comm = "ELC", merge = TRUE,
+               process = TRUE, timeframe = "lowest")
+out |> summarise(TWh = sum(value) / 1e6, .by = process) |>
+  arrange(desc(TWh)) |> head(5)
+```
+Top five in the local run: **⟨WECC_TOP5⟩**.
+
+```{r}
+# curtailment: compare vre output with the balance surplus, or query the
+# curtailment view directly:
+crt <- getData(scen_w, name = "vBalance", comm = "ELC",
+               merge = TRUE, timeframe = "lowest")
+```
+:::
+
+## 9.5 — Draw it {#sec-us26-ex-plot}
+
+**9.5a — Map.** Map 2027 generation by zone (`plot_map()`); try
+`type = "capacity"` too.
+
+**9.5b — A day in the west.** Pick the summer representative day and plot
+hourly dispatch by technology group against demand for CASO.
+
+::: {.callout-tip collapse="true" title="Solution 9.5"}
+```{r}
+plot_map(scen_w, type = "generation", comm = "ELC")
+
+dis <- getData(scen_w, name = "vTechOut", comm = "ELC", merge = TRUE,
+               process = TRUE) |>
+  filter(region == "CASO", grepl("^w32", timeslice)) |>
+  mutate(hour = as.integer(sub(".*_h", "", timeslice)))
+ggplot(dis, aes(hour, value / 1e3, fill = process)) +
+  geom_col(show.legend = FALSE) +
+  labs(y = "GWh/h", title = "CASO dispatch, summer day (w32)")
+```
+:::
+
+## 9.6 — How wrong is a sample? {#sec-us26-ex-calendar}
+
+**9.6 — Sampling error.** Solve 9.1 again on `us26_calendars$w2_h168` (two
+whole weeks) and on `w8_h168`. Compare the three objectives with the
+four-day run. Which quantity moves most — the objective, the generation
+mix, or storage utilization?
+
+::: {.callout-tip collapse="true" title="Solution 9.6"}
+```{r}
+objs <- sapply(c("s4d_h24", "w2_h168", "w8_h168"), \(cal) {
+  s <- interpolate_model(wecc, us26_calendars[[cal]],
+                         newHorizon(period = 2027, intervals = 1),
+                         name = paste0("wecc-2027-", cal)) |>
+    solve_scenario(solver = solver_options$julia_highs)
+  scenario_runs(s)$objective[1]
+})
+objs / objs[["s4d_h24"]]
+```
+The objective is the most forgiving of the three — annualized weights do a
+lot of work — while storage behaviour changes qualitatively with the sample
+(a 24-hour day cannot reward inter-day storage at all). That asymmetry is
+the whole argument of @sec-time, now at national scale.
+:::
+
+## Where this connects
+
+- @sec-realmodel did every one of these moves on a one-zone model you could
+  re-solve in seconds — if something here felt rushed, redo it there.
+- @sec-replication is the same "inherited model" story with a
+  transmission-heavy European system and a validation target.
+- The USENSYS model itself, its GenX provenance and the intercomparison
+  results live in the [US26MIP](https://github.com/usensys/US26MIP)
+  package documentation.
